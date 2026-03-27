@@ -758,8 +758,7 @@ function updateMarkers() {
 // ─── FETCH: FIND A TENDER ─────────────────────────────────────────────────────
 async function fetchTenders() {
   try {
-    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('.')[0];
-    const url = `https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?stages=planning&updatedFrom=${since}&limit=100`;
+    const url = `/api/tenders`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`FaTS API: ${res.status}`);
     const data = await res.json();
@@ -829,56 +828,41 @@ async function fetchTenders() {
 async function fetchPlanning() {
   try {
     const items = [];
-    const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Query major cities with bounding boxes
-    const cityQueries = [
-      { name: 'London', bbox: [-0.51, 51.28, 0.33, 51.69] },
-      { name: 'Manchester', bbox: [-2.4, 53.38, -2.1, 53.57] },
-      { name: 'Birmingham', bbox: [-2.0, 52.37, -1.7, 52.57] },
-      { name: 'Liverpool', bbox: [-3.1, 53.32, -2.85, 53.47] },
-      { name: 'Leeds', bbox: [-1.7, 53.73, -1.4, 53.88] },
-      { name: 'Bristol', bbox: [-2.7, 51.39, -2.5, 51.52] },
-      { name: 'Newcastle', bbox: [-1.75, 54.94, -1.55, 55.02] },
-    ];
+    const res = await fetch('/api/planning');
+    if (!res.ok) throw new Error(`Planning proxy: ${res.status}`);
+    const data = await res.json();
+    const cityResults = data.cities || [];
 
-    for (const city of cityQueries) {
-      try {
-        const [w, s, e, n] = city.bbox;
-        const url = `https://www.planit.org.uk/api/applics/json?bbox=${w},${s},${e},${n}&app_size=large&start_date=${since}&pg_sz=20&limit=20`;
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const applications = data.records || data.applications || data.features || [];
+    for (const cityResult of cityResults) {
+      const cityName = cityResult.city;
+      const applications = cityResult.records || [];
 
-        for (const app of applications) {
-          const props = app.properties || app;
-          const description = (props.description || props.development || props.summary || '').toLowerCase();
-          const isRegen = REGEN_KEYWORDS.some(kw => description.includes(kw));
-          if (!isRegen) continue;
+      for (const app of applications) {
+        const props = app.properties || app;
+        const description = (props.description || props.development || props.summary || '').toLowerCase();
+        const isRegen = REGEN_KEYWORDS.some(kw => description.includes(kw));
+        if (!isRegen) continue;
 
-          const lat = parseFloat(props.lat || props.latitude || (app.geometry?.coordinates?.[1]));
-          const lng = parseFloat(props.lng || props.longitude || props.long || (app.geometry?.coordinates?.[0]));
+        const lat = parseFloat(props.lat || props.latitude || (app.geometry?.coordinates?.[1]));
+        const lng = parseFloat(props.lng || props.longitude || props.long || (app.geometry?.coordinates?.[0]));
 
-          items.push({
-            id: props.uid || props.id || Math.random().toString(36).substr(2,9),
-            type: 'planning',
-            title: props.description || props.development || props.summary || 'Planning Application',
-            org: props.authority || props.lpa || city.name,
-            location: `${props.address || ''}, ${city.name}`.replace(/^,\s*/,''),
-            description: props.description || props.development || '',
-            status: props.app_state || props.status || props.decision || 'Unknown',
-            reference: props.uid || props.reference,
-            url: props.url || `https://www.planit.org.uk/applics/detail/uid:${props.uid}`,
-            lat: isNaN(lat) ? CITY_COORDS[city.name]?.lat + (Math.random()-0.5)*0.03 : lat,
-            lng: isNaN(lng) ? CITY_COORDS[city.name]?.lng + (Math.random()-0.5)*0.03 : lng,
-            city: city.name,
-            published: props.validated || props.received_date || props.start_date,
-            tags: ['Major Application', city.name]
-          });
-        }
-      } catch(cityErr) {
-        console.warn(`PlanIt ${city.name}:`, cityErr.message);
+        items.push({
+          id: props.uid || props.id || Math.random().toString(36).substr(2,9),
+          type: 'planning',
+          title: props.description || props.development || props.summary || 'Planning Application',
+          org: props.authority || props.lpa || cityName,
+          location: `${props.address || ''}, ${cityName}`.replace(/^,\s*/,''),
+          description: props.description || props.development || '',
+          status: props.app_state || props.status || props.decision || 'Unknown',
+          reference: props.uid || props.reference,
+          url: props.url || `https://www.planit.org.uk/applics/detail/uid:${props.uid}`,
+          lat: isNaN(lat) ? CITY_COORDS[cityName]?.lat + (Math.random()-0.5)*0.03 : lat,
+          lng: isNaN(lng) ? CITY_COORDS[cityName]?.lng + (Math.random()-0.5)*0.03 : lng,
+          city: cityName,
+          published: props.validated || props.received_date || props.start_date,
+          tags: ['Major Application', cityName]
+        });
       }
     }
 
@@ -893,7 +877,7 @@ async function fetchPlanning() {
 // ─── FETCH: BROWNFIELD ────────────────────────────────────────────────────────
 async function fetchBrownfield() {
   try {
-    const url = `https://www.planning.data.gov.uk/entity.json?dataset=brownfield-land&limit=100&entries=active`;
+    const url = `/api/brownfield`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Planning Data API: ${res.status}`);
     const data = await res.json();
@@ -1089,7 +1073,7 @@ function showError(source, message) {
   container.innerHTML += `
     <div class="error-msg">
       <strong>⚠ ${source} — data unavailable</strong>
-      ${message}. This may be due to CORS restrictions when running locally. Data will be available when hosted on a server.
+      ${message}. Check the browser console for details, or the Vercel function logs.
     </div>
   `;
 }
