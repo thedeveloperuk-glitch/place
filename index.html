@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RegenIntel — UK Place Intelligence</title>
+<title>The Developer Intelligence — UK Regeneration Pipeline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -250,19 +250,12 @@
   }
   .main-col { border-right: 1px solid var(--border); }
 
-  /* ── MAP (footer position) ── */
-  .map-footer {
-    border-top: 1px solid var(--border);
-  }
-  .map-footer-label {
-    font-family: var(--mono); font-size: 0.57rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); padding: 0.6rem 2rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
+  /* ── MAP — full width top strip ── */
   #map {
-    height: 300px; background: #e8e4de;
+    height: 380px;
+    background: #e8e4de;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
   }
 
   /* ── RESULTS HEADER ── */
@@ -565,8 +558,8 @@
 <header>
   <div class="logo">
     <div class="logo-mark"></div>
-    RegenIntel
-    <span class="logo-sub">— UK Place Intelligence</span>
+    The Developer Intelligence
+    <span class="logo-sub">— UK Regeneration Pipeline</span>
   </div>
   <div class="header-right">
     <div class="live-badge">
@@ -580,7 +573,7 @@
 <!-- SUMMARY BAR -->
 <div class="summary-bar">
   <div class="summary-intro">
-    Major regeneration opportunities across England — procurement, planning and brownfield land, 50+ homes.
+    Major development opportunities across England — market engagement, planning applications and brownfield land, 50+ homes.
   </div>
   <div class="summary-counts">
     <span class="summary-count tender"><span id="stat-tender">—</span> Procurement</span>
@@ -589,6 +582,9 @@
     <span class="summary-count london"><span id="stat-london">—</span> London</span>
   </div>
 </div>
+
+<!-- MAP — full width, top of page -->
+<div id="map"></div>
 
 <!-- FILTER PANEL -->
 <div class="filter-panel">
@@ -678,10 +674,7 @@
       </div>
     </div>
 
-    <div class="map-footer">
-      <div class="map-footer-label">Map view</div>
-      <div id="map"></div>
-    </div>
+
   </div>
 
   <div class="sidebar">
@@ -822,8 +815,8 @@ function updateMarkers() {
     if (!item.lat || !item.lng || isNaN(item.lat) || isNaN(item.lng)) return;
     const color = colors[item.type];
     const icon = L.divIcon({
-      html: `<div style="width:9px;height:9px;border-radius:50%;background:${color};border:1px solid rgba(255,255,255,0.6);box-shadow:0 0 6px ${color}80;"></div>`,
-      className: '', iconSize: [9,9], iconAnchor: [4,4]
+      html: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:pointer;"></div>`,
+      className: '', iconSize: [11,11], iconAnchor: [5,5]
     });
     L.marker([item.lat, item.lng], { icon })
       .addTo(markerLayer)
@@ -835,10 +828,11 @@ function updateMarkers() {
       .on('click', () => showDetail(item.id));
   });
 
-  if (markerLayer.getLayers().length > 0) {
+  // Only auto-fit on initial load (when map is at UK overview zoom)
+  if (markerLayer.getLayers().length > 0 && map.getZoom() <= 7) {
     try {
       const bounds = markerLayer.getBounds();
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.15), { maxZoom: 10 });
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.1), { maxZoom: 8 });
     } catch(e) {}
   }
 }
@@ -1370,10 +1364,25 @@ function showDetail(id) {
   `;
 
   document.getElementById('detail-panel').classList.add('open');
+
+  // Zoom map to this item's location
+  if (item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng)) {
+    map.setView([item.lat, item.lng], 14, { animate: true, duration: 0.6 });
+    // Highlight the marker
+    markerLayer.eachLayer(layer => {
+      if (layer.getLatLng &&
+          Math.abs(layer.getLatLng().lat - item.lat) < 0.001 &&
+          Math.abs(layer.getLatLng().lng - item.lng) < 0.001) {
+        layer.openPopup();
+      }
+    });
+  }
 }
 
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
+  // Zoom back out to UK overview
+  if (map) map.setView([52.5, -1.5], 6, { animate: true, duration: 0.5 });
 }
 
 // Sources toggle
