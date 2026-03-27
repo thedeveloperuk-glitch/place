@@ -34,3 +34,6 @@ export default async function handler(req, res) {
 
   res.status(200).json({ cities: allResults });
 }
+
+  res.status(200).json({ cities: allResults });
+}
