@@ -7,14 +7,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Date 60 days ago — PLD uses DD/MM/YYYY format for valid_date range queries
+    // Date 60 days ago in DD/MM/YYYY (PLD's date format)
     const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
     const sinceStr = `${String(since.getDate()).padStart(2,'0')}/${String(since.getMonth()+1).padStart(2,'0')}/${since.getFullYear()}`;
 
-    // Filter strategy:
-    // - valid_date range covers last 60 days
-    // - must have 10+ proposed residential units OR 1000m²+ GIA gained (major threshold)
-    // - application_type NOT "All Other" / "Trees" / "Advertising" etc. — keep substantive types
+    // Filter: validated in last 60 days AND GIA gained >= 1000m²
+    // (GIA >= 1000 is the standard major development threshold)
+    // application_type in PLD is always "All Other" / "Householder" — not useful for filtering
     const query = {
       size: 50,
       query: {
@@ -24,30 +23,18 @@ export default async function handler(req, res) {
               range: {
                 valid_date: { gte: sinceStr, format: 'dd/MM/yyyy' }
               }
-            }
-          ],
-          should: [
-            {
-              range: {
-                'application_details.total_no_proposed_residential_units': { gte: 10 }
-              }
             },
             {
               range: {
                 'application_details.total_gia_gained': { gte: 1000 }
               }
-            },
-            {
-              terms: {
-                'application_type.raw': ['Major Dwellings', 'Major Other', 'Major Office', 'Major Retail', 'Major Industrial']
-              }
             }
           ],
-          minimum_should_match: 1,
           must_not: [
-            { term: { 'application_type.raw': 'Trees' } },
-            { term: { 'application_type.raw': 'Advertising' } },
-            { term: { 'application_type.raw': 'Telecoms' } }
+            // Exclude pure householder applications
+            { term: { 'application_type_full.raw': 'Householder planning permission' } },
+            { term: { 'application_type_full.raw': 'Lawful development: Proposed use' } },
+            { term: { 'application_type_full.raw': 'Lawful development: Existing use' } }
           ]
         }
       },
@@ -57,8 +44,8 @@ export default async function handler(req, res) {
         'valid_date', 'decision_date', 'decision', 'status',
         'site_name', 'site_number', 'street_name', 'postcode',
         'centroid',
-        'application_details.total_no_proposed_residential_units',
         'application_details.total_gia_gained',
+        'application_details.total_no_proposed_residential_units',
         'id', 'url_planning_app', 'pp_id'
       ],
       sort: [{ valid_date: { order: 'desc', format: 'dd/MM/yyyy' } }]
