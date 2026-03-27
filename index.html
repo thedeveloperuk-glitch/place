@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regen Intelligence — UK Urban Regeneration Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --ink: #0e0e0e;
+    --paper: #f5f0e8;
+    --accent: #c8401a;
+    --accent2: #1a5c8a;
+    --accent3: #2d7a4a;
+    --muted: #7a7468;
+    --rule: #d4cfc5;
+    --card: #faf7f2;
+    --tender: #c8401a;
+    --planning: #1a5c8a;
+    --brownfield: #2d7a4a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--accent);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 64px;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .header-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  /* LAYOUT */
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* INTRO STRIP */
+  .intro-strip {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    border-left: 4px solid var(--accent);
+  }
+
+  .intro-strip h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1.1;
+    flex: 0 0 auto;
+  }
+
+  .intro-strip p {
+    font-size: 0.9rem;
+    color: #b0a99a;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-bottom: 2rem;
+  }
+
+  .stat {
+    background: var(--card);
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .stat-dot.tender { background: var(--tender); }
+  .stat-dot.planning { background: var(--planning); }
+  .stat-dot.brownfield { background: var(--brownfield); }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-value.tender { color: var(--tender); }
+  .stat-value.planning { color: var(--planning); }
+  .stat-value.brownfield { color: var(--brownfield); }
+
+  /* FILTERS */
+  .filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .filter-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+
+  .filter-btn:hover { border-color: var(--ink); }
+  .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .filter-btn.active.tender { background: var(--tender); border-color: var(--tender); }
+  .filter-btn.active.planning { background: var(--planning); border-color: var(--planning); }
+  .filter-btn.active.brownfield { background: var(--brownfield); border-color: var(--brownfield); }
+
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input:focus { border-color: var(--ink); }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  /* MAP */
+  #map {
+    height: 500px;
+    border: 1px solid var(--rule);
+    background: #e8e4dc;
+    margin-bottom: 2rem;
+  }
+
+  /* RESULTS */
+  .results-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .results-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .results-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* CARDS */
+  .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .card {
+    background: var(--card);
+    padding: 1.25rem 1.5rem;
+    transition: background 0.15s;
+    cursor: pointer;
+    position: relative;
+    border-left: 4px solid transparent;
+  }
+
+  .card:hover { background: #fff; }
+  .card.tender { border-left-color: var(--tender); }
+  .card.planning { border-left-color: var(--planning); }
+  .card.brownfield { border-left-color: var(--brownfield); }
+
+  .card-type {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card-type.tender { color: var(--tender); }
+  .card-type.planning { color: var(--planning); }
+  .card-type.brownfield { color: var(--brownfield); }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 0.4rem;
+  }
+
+  .card-org {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+
+  .card-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .card-meta-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .card-meta-item strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .card-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid currentColor;
+    margin-top: 0.6rem;
+    margin-right: 0.3rem;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: sticky;
+    top: 80px;
+  }
+
+  .sidebar-section {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .sidebar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .city-list {
+    list-style: none;
+  }
+
+  .city-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--rule);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: color 0.15s;
+  }
+
+  .city-item:hover { color: var(--accent); }
+  .city-item:last-child { border-bottom: none; }
+
+  .city-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 3rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .loading-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--rule);
+    margin-top: 1rem;
+    overflow: hidden;
+  }
+
+  .loading-bar-inner {
+    height: 100%;
+    background: var(--accent);
+    animation: loadingAnim 1.5s ease-in-out infinite;
+    width: 30%;
+  }
+
+  @keyframes loadingAnim {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  /* ERROR */
+  .error-msg {
+    background: #fff3f0;
+    border: 1px solid var(--tender);
+    border-left: 4px solid var(--tender);
+    padding: 1rem 1.25rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .error-msg strong { display: block; margin-bottom: 0.3rem; }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    background: #e8f5e9;
+    color: var(--brownfield);
+    border: 1px solid #c8e6c9;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--brownfield);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem 0;
+  }
+
+  .page-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover, .page-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  /* DETAIL PANEL */
+  .detail-overlay {
+    display: none;
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 500px;
+    background: var(--paper);
+    border-left: 3px solid var(--ink);
+    z-index: 2000;
+    overflow-y: auto;
+    box-shadow: -10px 0 40px rgba(0,0,0,0.15);
+  }
+
+  .detail-overlay.open { display: block; }
+
+  .detail-header {
+    padding: 1.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    position: sticky;
+    top: 0;
+  }
+
+  .detail-close {
+    float: right;
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--muted);
+    background: none;
+    border: none;
+    color: #888;
+  }
+
+  .detail-close:hover { color: var(--paper); }
+
+  .detail-body { padding: 1.5rem; }
+
+  .detail-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .detail-section:last-child { border-bottom: none; }
+
+  .detail-field-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .detail-field-value {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .detail-link {
+    display: inline-block;
+    margin-top: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 2px;
+  }
+
+  .detail-link:hover { color: var(--ink); border-color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+    .stats-bar { grid-template-columns: 1fr; }
+    .detail-overlay { width: 100%; }
+    .intro-strip { flex-direction: column; gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Regen<span>Intel</span></div>
+  <div class="header-meta">
+    <div><span class="status-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#4caf50;animation:pulse 2s infinite;"></span> Live data</div>
+    <div>UK Urban Regeneration Intelligence</div>
+  </div>
+</header>
+
+<div class="intro-strip">
+  <h1>Urban<br>Regeneration<br>Intelligence</h1>
+  <p>Early-stage pipeline tracking for UK regeneration professionals. Aggregating procurement opportunities, major planning applications and brownfield sites across England. Built for developers, architects and place-makers.</p>
+</div>
+
+<div class="container">
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-dot tender"></div>
+      <div>
+        <span class="stat-label">Market Engagement Notices</span>
+        <div class="stat-value tender" id="stat-tender">—</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-dot planning"></div>
+      <div>
+        <span class="stat-label">Major Planning Applications</span>
+        <div class="stat-value planning" id="stat-planning">—</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-dot brownfield"></div>
+      <div>
+        <span class="stat-label">Brownfield Sites</span>
+        <div class="stat-value brownfield" id="stat-brownfield">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Show:</span>
+    <div class="filter-group">
+      <button class="filter-btn active tender" data-filter="tender" onclick="toggleFilter('tender')">Market Engagement</button>
+      <button class="filter-btn active planning" data-filter="planning" onclick="toggleFilter('planning')">Planning</button>
+      <button class="filter-btn active brownfield" data-filter="brownfield" onclick="toggleFilter('brownfield')">Brownfield</button>
+    </div>
+    <span class="filter-label" style="margin-left:1rem;">City:</span>
+    <div class="filter-group" id="city-filters">
+      <button class="filter-btn active" data-city="all" onclick="filterCity('all')">All</button>
+    </div>
+    <input type="text" class="search-input" id="search-input" placeholder="Search projects, organisations, locations..." oninput="handleSearch()">
+  </div>
+
+  <div class="main-grid">
+    <div class="left-col">
+      <div id="map"></div>
+
+      <div class="results-header">
+        <div class="results-title">Pipeline Projects</div>
+        <div class="results-count" id="results-count">Loading...</div>
+      </div>
+
+      <div id="error-container"></div>
+      <div id="results-container">
+        <div class="loading">
+          Fetching live data from Find a Tender, PlanIt &amp; Planning Data...
+          <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Activity by City</div>
+        <ul class="city-list" id="city-breakdown"></ul>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Data Sources</div>
+        <div style="font-size:0.8rem;line-height:1.7;color:var(--muted);">
+          <div style="margin-bottom:0.5rem;"><span style="color:var(--tender);font-family:'DM Mono',monospace;font-size:0.65rem;">● MARKET ENGAGEMENT</span><br>Find a Tender (UK2 Preliminary Market Engagement notices) — open OCDS API</div>
+          <div style="margin-bottom:0.5rem;"><span style="color:var(--planning);font-family:'DM Mono',monospace;font-size:0.65rem;">● PLANNING</span><br>PlanIt.org.uk — national planning applications API, major applications only</div>
+          <div><span style="color:var(--brownfield);font-family:'DM Mono',monospace;font-size:0.65rem;">● BROWNFIELD</span><br>planning.data.gov.uk — brownfield land register, England</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">About this tool</div>
+        <div style="font-size:0.8rem;line-height:1.7;color:var(--muted);">
+          RegenIntel tracks regeneration opportunities at the earliest public stage — before teams are appointed. Data refreshes daily. Curated for urban developers, masterplanners and architects working in UK placemaking.
+          <br><br>
+          A <a href="https://www.festivalofplace.co.uk" style="color:var(--accent);">Festival of Place</a> initiative.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-overlay" id="detail-panel">
+  <div class="detail-header">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div id="detail-type-badge" style="margin-bottom:0.5rem;"></div>
+    <div id="detail-title" style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;line-height:1.3;"></div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let allItems = [];
+let filteredItems = [];
+let activeFilters = { tender: true, planning: true, brownfield: true };
+let activeCity = 'all';
+let searchTerm = '';
+let map, markers = [];
+
+// Regeneration keywords for filtering
+const REGEN_KEYWORDS = [
+  'regeneration','masterplan','master plan','mixed use','mixed-use',
+  'town centre','town center','brownfield','placemaking','place making',
+  'housing-led','residential led','residential-led','urban renewal',
+  'estate regeneration','high street','market town','waterfront',
+  'cultural quarter','innovation district','garden city','new town',
+  'strategic development','opportunity area','growth area','city centre',
+  'city center','quarter','sustainable urban','heritage','conservation area'
+];
+
+// Regeneration CPV codes for Find a Tender
+const REGEN_CPVS = [
+  '71410000', // Urban planning
+  '71400000', // Urban planning and landscape architecture
+  '71240000', // Architectural, engineering and planning services
+  '71200000', // Architectural and related services
+  '70110000', // Development services of real estate
+  '70000000', // Real estate services
+  '71313000', // Environmental consultancy services
+  '79411100', // Business development consultancy services
+  '71311000', // Civil engineering consultancy services
+];
+
+// UK cities with approximate coords for filtering
+const CITY_COORDS = {
+  'London': {lat:51.5074, lng:-0.1278},
+  'Manchester': {lat:53.4808, lng:-2.2426},
+  'Birmingham': {lat:52.4862, lng:-1.8904},
+  'Liverpool': {lat:53.4084, lng:-2.9916},
+  'Leeds': {lat:53.8008, lng:-1.5491},
+  'Bristol': {lat:51.4545, lng:-2.5879},
+  'Newcastle': {lat:54.9783, lng:-1.6174},
+  'Sheffield': {lat:53.3811, lng:-1.4701},
+  'Nottingham': {lat:52.9548, lng:-1.1581},
+  'Leicester': {lat:52.6369, lng:-1.1398},
+  'Glasgow': {lat:55.8642, lng:-4.2518},
+  'Edinburgh': {lat:55.9533, lng:-3.1883},
+  'Cardiff': {lat:51.4816, lng:-3.1791},
+  'Southampton': {lat:50.9097, lng:-1.4044},
+  'Plymouth': {lat:50.3755, lng:-4.1427},
+  'Derby': {lat:52.9225, lng:-1.4746},
+  'Coventry': {lat:52.4068, lng:-1.5197},
+  'Bradford': {lat:53.7960, lng:-1.7594},
+  'Wolverhampton': {lat:52.5862, lng:-2.1270},
+  'Stoke': {lat:53.0027, lng:-2.1794},
+};
+
+// ─── MAP INIT ─────────────────────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([52.5, -1.5], 6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+}
+
+function addMarker(item) {
+  if (!item.lat || !item.lng) return;
+  const colors = { tender: '#c8401a', planning: '#1a5c8a', brownfield: '#2d7a4a' };
+  const color = colors[item.type] || '#666';
+  const icon = L.divIcon({
+    html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+    className: '',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+  const marker = L.marker([item.lat, item.lng], { icon })
+    .addTo(map)
+    .bindPopup(`<strong style="font-family:'Playfair Display',serif;">${item.title}</strong><br><small>${item.org || item.location || ''}</small>`);
+  markers.push(marker);
+}
+
+function clearMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+}
+
+function updateMarkers() {
+  clearMarkers();
+  filteredItems.forEach(item => addMarker(item));
+}
+
+// ─── FETCH: FIND A TENDER ─────────────────────────────────────────────────────
+async function fetchTenders() {
+  try {
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('.')[0];
+    const url = `https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?stages=planning&updatedFrom=${since}&limit=100`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`FaTS API: ${res.status}`);
+    const data = await res.json();
+    const releases = data.releases || [];
+    const items = [];
+
+    for (const release of releases) {
+      const tender = release.tender || {};
+      const title = tender.title || '';
+      const description = (tender.description || '') + ' ' + title;
+      const noticeType = (release.tag || []).join(' ');
+
+      // Filter to UK2 (preliminary market engagement) style or planning stage
+      const isEarlyStage = noticeType.includes('planning') || tender.status === 'planned';
+
+      // Keyword filter for regeneration relevance
+      const descLower = description.toLowerCase();
+      const isRegen = REGEN_KEYWORDS.some(kw => descLower.includes(kw));
+
+      if (!isEarlyStage || !isRegen) continue;
+
+      // Extract location
+      const addresses = (tender.items || []).flatMap(i => i.deliveryAddresses || []);
+      const region = addresses[0]?.region || '';
+      const buyer = (release.parties || []).find(p => p.roles?.includes('buyer'));
+      const buyerTown = buyer?.address?.locality || buyer?.address?.region || '';
+
+      // Geolocate
+      const locationStr = `${buyerTown} ${region}`.toLowerCase();
+      let lat = null, lng = null;
+      for (const [city, coords] of Object.entries(CITY_COORDS)) {
+        if (locationStr.includes(city.toLowerCase())) {
+          lat = coords.lat + (Math.random() - 0.5) * 0.05;
+          lng = coords.lng + (Math.random() - 0.5) * 0.05;
+          break;
+        }
+      }
+
+      const deadline = tender.submissionTerms?.bidDeadline || tender.communication?.futureNoticeDate;
+      const value = tender.value?.amount;
+
+      items.push({
+        id: release.id,
+        type: 'tender',
+        title: title || 'Untitled Notice',
+        org: buyer?.name || 'Unknown authority',
+        location: buyerTown || region,
+        description: tender.description || '',
+        deadline: deadline ? new Date(deadline).toLocaleDateString('en-GB') : null,
+        value: value ? `£${(value/1e6).toFixed(1)}m` : null,
+        published: release.date ? new Date(release.date).toLocaleDateString('en-GB') : null,
+        url: `https://www.find-tender.service.gov.uk/Notice/${release.id}`,
+        lat, lng,
+        tags: ['Market Engagement', 'Early Stage']
+      });
+    }
+
+    return items;
+  } catch(e) {
+    console.error('Tender fetch error:', e);
+    showError('Find a Tender', e.message);
+    return [];
+  }
+}
+
+// ─── FETCH: PLANIT ────────────────────────────────────────────────────────────
+async function fetchPlanning() {
+  try {
+    const items = [];
+    const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Query major cities with bounding boxes
+    const cityQueries = [
+      { name: 'London', bbox: [-0.51, 51.28, 0.33, 51.69] },
+      { name: 'Manchester', bbox: [-2.4, 53.38, -2.1, 53.57] },
+      { name: 'Birmingham', bbox: [-2.0, 52.37, -1.7, 52.57] },
+      { name: 'Liverpool', bbox: [-3.1, 53.32, -2.85, 53.47] },
+      { name: 'Leeds', bbox: [-1.7, 53.73, -1.4, 53.88] },
+      { name: 'Bristol', bbox: [-2.7, 51.39, -2.5, 51.52] },
+      { name: 'Newcastle', bbox: [-1.75, 54.94, -1.55, 55.02] },
+    ];
+
+    for (const city of cityQueries) {
+      try {
+        const [w, s, e, n] = city.bbox;
+        const url = `https://www.planit.org.uk/api/applics/json?bbox=${w},${s},${e},${n}&app_size=large&start_date=${since}&pg_sz=20&limit=20`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const applications = data.records || data.applications || data.features || [];
+
+        for (const app of applications) {
+          const props = app.properties || app;
+          const description = (props.description || props.development || props.summary || '').toLowerCase();
+          const isRegen = REGEN_KEYWORDS.some(kw => description.includes(kw));
+          if (!isRegen) continue;
+
+          const lat = parseFloat(props.lat || props.latitude || (app.geometry?.coordinates?.[1]));
+          const lng = parseFloat(props.lng || props.longitude || props.long || (app.geometry?.coordinates?.[0]));
+
+          items.push({
+            id: props.uid || props.id || Math.random().toString(36).substr(2,9),
+            type: 'planning',
+            title: props.description || props.development || props.summary || 'Planning Application',
+            org: props.authority || props.lpa || city.name,
+            location: `${props.address || ''}, ${city.name}`.replace(/^,\s*/,''),
+            description: props.description || props.development || '',
+            status: props.app_state || props.status || props.decision || 'Unknown',
+            reference: props.uid || props.reference,
+            url: props.url || `https://www.planit.org.uk/applics/detail/uid:${props.uid}`,
+            lat: isNaN(lat) ? CITY_COORDS[city.name]?.lat + (Math.random()-0.5)*0.03 : lat,
+            lng: isNaN(lng) ? CITY_COORDS[city.name]?.lng + (Math.random()-0.5)*0.03 : lng,
+            city: city.name,
+            published: props.validated || props.received_date || props.start_date,
+            tags: ['Major Application', city.name]
+          });
+        }
+      } catch(cityErr) {
+        console.warn(`PlanIt ${city.name}:`, cityErr.message);
+      }
+    }
+
+    return items;
+  } catch(e) {
+    console.error('Planning fetch error:', e);
+    showError('PlanIt Planning API', e.message);
+    return [];
+  }
+}
+
+// ─── FETCH: BROWNFIELD ────────────────────────────────────────────────────────
+async function fetchBrownfield() {
+  try {
+    const url = `https://www.planning.data.gov.uk/entity.json?dataset=brownfield-land&limit=100&entries=active`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Planning Data API: ${res.status}`);
+    const data = await res.json();
+    const entities = data.entities || [];
+    const items = [];
+
+    for (const entity of entities) {
+      const lat = parseFloat(entity.latitude || entity.point?.split(',')[1]);
+      const lng = parseFloat(entity.longitude || entity.point?.split(',')[0]);
+
+      items.push({
+        id: entity.reference || entity.entity,
+        type: 'brownfield',
+        title: entity['site-name'] || entity.name || entity.reference || 'Brownfield Site',
+        org: entity['local-authority'] || entity.organisation || '',
+        location: entity.address || entity['site-address'] || '',
+        description: entity.notes || entity.description || '',
+        hectares: entity['site-hectares'] || entity.hectares,
+        units: entity['minimum-net-dwellings'] || entity['maximum-net-dwellings'],
+        status: entity['planning-permission-status'] || entity.status || '',
+        url: entity['planning-permission-url'] || `https://www.planning.data.gov.uk/entity/${entity.entity}`,
+        lat: isNaN(lat) ? null : lat,
+        lng: isNaN(lng) ? null : lng,
+        tags: ['Brownfield', 'Available Land']
+      });
+    }
+
+    return items;
+  } catch(e) {
+    console.error('Brownfield fetch error:', e);
+    showError('Planning Data (Brownfield)', e.message);
+    return [];
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderCards(items) {
+  const container = document.getElementById('results-container');
+  document.getElementById('results-count').textContent = `${items.length} results`;
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state">No projects match your current filters.<br>Try adjusting the search or filter options.</div>`;
+    return;
+  }
+
+  const typeLabels = { tender: 'Market Engagement', planning: 'Planning Application', brownfield: 'Brownfield Site' };
+
+  container.innerHTML = `<div class="card-list">${items.map(item => `
+    <div class="card ${item.type}" onclick="showDetail('${item.id}')">
+      <div class="card-type ${item.type}">● ${typeLabels[item.type]}</div>
+      <div class="card-title">${item.title}</div>
+      <div class="card-org">${item.org || ''}</div>
+      <div class="card-meta">
+        ${item.location ? `<span class="card-meta-item">📍 <strong>${item.location}</strong></span>` : ''}
+        ${item.deadline ? `<span class="card-meta-item">⏱ Deadline <strong>${item.deadline}</strong></span>` : ''}
+        ${item.value ? `<span class="card-meta-item">💷 <strong>${item.value}</strong></span>` : ''}
+        ${item.status ? `<span class="card-meta-item">Status <strong>${item.status}</strong></span>` : ''}
+        ${item.hectares ? `<span class="card-meta-item">📐 <strong>${item.hectares}ha</strong></span>` : ''}
+        ${item.published ? `<span class="card-meta-item">Published <strong>${item.published}</strong></span>` : ''}
+      </div>
+      ${(item.tags||[]).map(t => `<span class="card-tag" style="color:${item.type==='tender'?'var(--tender)':item.type==='planning'?'var(--planning)':'var(--brownfield)'}">${t}</span>`).join('')}
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderCityBreakdown(items) {
+  const cityCounts = {};
+  items.forEach(item => {
+    const city = item.city || extractCity(item.location || '') || 'Other';
+    cityCounts[city] = (cityCounts[city] || 0) + 1;
+  });
+
+  const sorted = Object.entries(cityCounts).sort((a,b) => b[1]-a[1]).slice(0, 12);
+  const list = document.getElementById('city-breakdown');
+  list.innerHTML = sorted.map(([city, count]) => `
+    <li class="city-item" onclick="filterCity('${city}')">
+      <span>${city}</span>
+      <span class="city-count">${count}</span>
+    </li>
+  `).join('');
+
+  // Add city filter buttons
+  const cityFilterContainer = document.getElementById('city-filters');
+  const existingCities = Array.from(cityFilterContainer.querySelectorAll('[data-city]')).map(b => b.dataset.city);
+  sorted.slice(0, 6).forEach(([city]) => {
+    if (!existingCities.includes(city)) {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.city = city;
+      btn.textContent = city;
+      btn.onclick = () => filterCity(city);
+      cityFilterContainer.appendChild(btn);
+    }
+  });
+}
+
+function extractCity(location) {
+  for (const city of Object.keys(CITY_COORDS)) {
+    if (location.toLowerCase().includes(city.toLowerCase())) return city;
+  }
+  return null;
+}
+
+// ─── FILTERING ────────────────────────────────────────────────────────────────
+function applyFilters() {
+  filteredItems = allItems.filter(item => {
+    if (!activeFilters[item.type]) return false;
+    if (activeCity !== 'all') {
+      const city = item.city || extractCity(item.location || '') || '';
+      if (city !== activeCity) return false;
+    }
+    if (searchTerm) {
+      const haystack = `${item.title} ${item.org} ${item.location} ${item.description}`.toLowerCase();
+      if (!haystack.includes(searchTerm)) return false;
+    }
+    return true;
+  });
+
+  renderCards(filteredItems);
+  updateMarkers();
+  document.getElementById('results-count').textContent = `${filteredItems.length} of ${allItems.length} results`;
+}
+
+function toggleFilter(type) {
+  activeFilters[type] = !activeFilters[type];
+  document.querySelector(`[data-filter="${type}"]`).classList.toggle('active', activeFilters[type]);
+  applyFilters();
+}
+
+function filterCity(city) {
+  activeCity = city;
+  document.querySelectorAll('[data-city]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.city === city);
+  });
+  applyFilters();
+}
+
+function handleSearch() {
+  searchTerm = document.getElementById('search-input').value.toLowerCase();
+  applyFilters();
+}
+
+// ─── DETAIL PANEL ─────────────────────────────────────────────────────────────
+function showDetail(id) {
+  const item = allItems.find(i => i.id === id || i.id === String(id));
+  if (!item) return;
+
+  const typeLabels = { tender: 'Market Engagement', planning: 'Planning Application', brownfield: 'Brownfield Site' };
+  const colors = { tender: 'var(--tender)', planning: 'var(--planning)', brownfield: 'var(--brownfield)' };
+
+  document.getElementById('detail-type-badge').innerHTML = `<span style="font-family:'DM Mono',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:${colors[item.type]}">● ${typeLabels[item.type]}</span>`;
+  document.getElementById('detail-title').textContent = item.title;
+
+  const fields = [
+    ['Organisation', item.org],
+    ['Location', item.location],
+    ['Status', item.status],
+    ['Reference', item.reference],
+    ['Published', item.published],
+    ['Deadline', item.deadline],
+    ['Estimated Value', item.value],
+    ['Site Area', item.hectares ? `${item.hectares} hectares` : null],
+    ['Potential Units', item.units],
+  ].filter(([_, v]) => v);
+
+  document.getElementById('detail-body').innerHTML = `
+    ${item.description ? `
+    <div class="detail-section">
+      <div class="detail-field-label">Description</div>
+      <div class="detail-field-value">${item.description.substring(0,600)}${item.description.length > 600 ? '...' : ''}</div>
+    </div>` : ''}
+    <div class="detail-section">
+      ${fields.map(([label, value]) => `
+        <div style="margin-bottom:0.8rem;">
+          <div class="detail-field-label">${label}</div>
+          <div class="detail-field-value">${value}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${item.url ? `<a href="${item.url}" target="_blank" class="detail-link">View original notice →</a>` : ''}
+  `;
+
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+// ─── ERROR DISPLAY ────────────────────────────────────────────────────────────
+function showError(source, message) {
+  const container = document.getElementById('error-container');
+  container.innerHTML += `
+    <div class="error-msg">
+      <strong>⚠ ${source} — data unavailable</strong>
+      ${message}. This may be due to CORS restrictions when running locally. Data will be available when hosted on a server.
+    </div>
+  `;
+}
+
+// ─── STATS UPDATE ─────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-tender').textContent = allItems.filter(i => i.type === 'tender').length;
+  document.getElementById('stat-planning').textContent = allItems.filter(i => i.type === 'planning').length;
+  document.getElementById('stat-brownfield').textContent = allItems.filter(i => i.type === 'brownfield').length;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  initMap();
+
+  const [tenders, planning, brownfield] = await Promise.all([
+    fetchTenders(),
+    fetchPlanning(),
+    fetchBrownfield()
+  ]);
+
+  allItems = [...tenders, ...planning, ...brownfield];
+  filteredItems = [...allItems];
+
+  updateStats();
+  renderCityBreakdown(allItems);
+  renderCards(filteredItems);
+  updateMarkers();
+
+  // Fit map to markers if any
+  if (markers.length > 0) {
+    const group = L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
+}
+
+init();
+</script>
+</body>
+</html>
