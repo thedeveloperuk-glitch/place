@@ -4,12 +4,6 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Fetch brownfield sites in two passes:
-    // 1. Not-permissioned sites (most actionable for developers) — 100 results
-    // 2. Pending-decision sites — 100 results
-    // Filter to minimum-net-dwellings >= 10 to keep only meaningful sites
-    // The API has 36k+ entries so we must filter at source
-
     const BASE = 'https://www.planning.data.gov.uk/entity.json?dataset=brownfield-land&entries=active&limit=100';
     const FIELDS = [
       'entity','name','reference','latitude','longitude','point',
@@ -29,18 +23,17 @@ export default async function handler(req, res) {
     ]);
 
     const results = [];
-
     for (const response of [notPermissioned, pendingDecision]) {
       if (!response.ok) continue;
       const data = await response.json();
+      // Only sites with 50+ minimum dwellings
       const entities = (data.entities || []).filter(e => {
-        const minDwellings = parseInt(e['minimum-net-dwellings'] || e['maximum-net-dwellings'] || '0');
-        return minDwellings >= 10;
+        const min = parseInt(e['minimum-net-dwellings'] || e['maximum-net-dwellings'] || '0');
+        return min >= 50;
       });
       results.push(...entities);
     }
 
-    // Deduplicate by entity id
     const seen = new Set();
     const deduped = results.filter(e => {
       if (seen.has(e.entity)) return false;
