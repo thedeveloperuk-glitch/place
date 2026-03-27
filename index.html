@@ -10,27 +10,27 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg:           #ffffff;
-    --surface:      #f7f6f4;
-    --surface2:     #f0ede8;
-    --border:       #e2ddd6;
-    --border-dim:   #ece8e2;
-    --text:         #1a1816;
-    --text-muted:   #5c5650;
-    --text-dim:     #a09890;
-    --tender:       #b83220;
-    --tender-bg:    #fdf3f1;
-    --tender-border:#f5c8c0;
-    --planning:     #1e57a0;
-    --planning-bg:  #f0f4fb;
-    --planning-border:#b8cce8;
-    --brownfield:   #1e7045;
-    --brownfield-bg:#f0f8f3;
-    --brownfield-border:#b0dcc0;
-    --london:        #7b3fa0;
-    --london-bg:     #f8f3fc;
-    --london-border: #d8b8f0;
-    --gold:         #8a6820;
+    --bg:           #faf9f7;
+    --surface:      #f2f0ec;
+    --surface2:     #e8e4de;
+    --border:       #d4cfc8;
+    --border-dim:   #dedad4;
+    --text:         #1c1a18;
+    --text-muted:   #4a4540;
+    --text-dim:     #8a8480;
+    --tender:       #a02818;
+    --tender-bg:    #fdf0ee;
+    --tender-border:#e8b8b0;
+    --planning:     #1a4e90;
+    --planning-bg:  #eef2fa;
+    --planning-border:#a8c0e0;
+    --brownfield:   #1a6038;
+    --brownfield-bg:#eef6f0;
+    --brownfield-border:#a0ccb0;
+    --london:        #6a3090;
+    --london-bg:     #f4eef8;
+    --london-border: #c8a8e0;
+    --gold:         #7a5c10;
     --serif:  'Instrument Serif', Georgia, serif;
     --sans:   'Instrument Sans', system-ui, sans-serif;
     --mono:   'DM Mono', monospace;
@@ -45,6 +45,8 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -109,85 +111,32 @@
     text-transform: uppercase;
   }
 
-  /* ── MASTHEAD ── */
-  .masthead {
+  /* ── SUMMARY BAR ── */
+  .summary-bar {
     border-bottom: 1px solid var(--border);
-    padding: 3rem 2rem 2.5rem;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 4rem;
-    align-items: end;
+    padding: 0.85rem 2rem;
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 2rem;
+    background: var(--bg);
+    flex-wrap: wrap;
   }
-  .masthead-eyebrow {
-    font-family: var(--mono); font-size: 0.58rem;
-    text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--tender); margin-bottom: 0.9rem;
-    display: flex; align-items: center; gap: 0.6rem;
+  .summary-intro {
+    font-size: 0.9rem; color: var(--text-muted);
+    font-weight: 400; flex: 1; min-width: 200px; line-height: 1.5;
   }
-  .masthead-eyebrow::before {
-    content: ''; display: inline-block;
-    width: 18px; height: 1px; background: var(--tender);
+  .summary-counts {
+    display: flex; gap: 1.5rem; flex-shrink: 0; flex-wrap: wrap;
+    align-items: center;
   }
-  .masthead-left h1 {
-    font-family: var(--serif);
-    font-size: clamp(2.5rem, 4vw, 3.6rem);
-    font-weight: 400; line-height: 1.08;
-    letter-spacing: -0.025em; color: var(--text);
+  .summary-count {
+    font-family: var(--sans); font-size: 0.82rem;
+    font-weight: 400; color: var(--text-muted);
   }
-  .masthead-right {
-    padding-bottom: 0.25rem;
-  }
-  .masthead-right p {
-    font-size: 0.85rem; line-height: 1.8;
-    color: var(--text-muted); font-weight: 300;
-    max-width: 480px;
-  }
-  .masthead-right p strong { color: var(--text); font-weight: 400; }
-  .masthead-right a {
-    color: var(--tender); text-decoration: none;
-    border-bottom: 1px solid var(--tender-border);
-  }
-  .masthead-right a:hover { border-color: var(--tender); }
-
-  /* ── STAT TICKER ── */
-  .stat-ticker {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    border-bottom: 1px solid var(--border);
-  }
-  .stat-cell {
-    padding: 1.4rem 2rem;
-    border-right: 1px solid var(--border);
-    position: relative;
-  }
-  .stat-cell:last-child { border-right: none; }
-  .stat-cell::before {
-    content: ''; position: absolute;
-    top: 0; left: 0; width: 2px; height: 100%;
-  }
-  .stat-cell.tender::before   { background: var(--tender); }
-  .stat-cell.planning::before { background: var(--planning); }
-  .stat-cell.brownfield::before { background: var(--brownfield); }
-  .stat-cell.london::before { background: var(--london); }
-
-  .stat-label {
-    font-family: var(--mono); font-size: 0.57rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); margin-bottom: 0.5rem; display: block;
-  }
-  .stat-num {
-    font-family: var(--serif); font-size: 2.4rem;
-    font-weight: 400; line-height: 1; letter-spacing: -0.03em;
-  }
-  .stat-num.tender   { color: var(--tender); }
-  .stat-num.planning { color: var(--planning); }
-  .stat-num.brownfield { color: var(--brownfield); }
-  .stat-num.london { color: var(--london); }
-  .stat-sub {
-    font-family: var(--mono); font-size: 0.55rem;
-    color: var(--text-dim); margin-top: 0.3rem;
-    letter-spacing: 0.04em;
-  }
+  .summary-count span { font-size: 1rem; font-weight: 600; margin-right: 0.25em; }
+  .summary-count.tender span    { color: var(--tender); }
+  .summary-count.planning span  { color: var(--planning); }
+  .summary-count.brownfield span{ color: var(--brownfield); }
+  .summary-count.london span    { color: var(--london); }
 
   /* ── FILTER PANEL ── */
   .filter-panel {
@@ -200,7 +149,7 @@
     gap: 0; flex-wrap: wrap;
   }
   .filter-row-search {
-    padding: 0.75rem 2rem 0;
+    padding: 0.85rem 2rem 0.5rem;
     border-bottom: none;
   }
   .filter-block {
@@ -209,9 +158,9 @@
   }
   .filter-block-right { margin-left: auto; }
   .filter-block-label {
-    font-family: var(--mono); font-size: 0.57rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); white-space: nowrap; flex-shrink: 0;
+    font-family: var(--sans); font-size: 0.78rem;
+    font-weight: 500; text-transform: none; letter-spacing: 0;
+    color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
   }
   .filter-divider {
     width: 1px; height: 20px;
@@ -221,15 +170,16 @@
 
   /* Chips */
   .chip {
-    font-family: var(--mono); font-size: 0.6rem;
-    letter-spacing: 0.04em; padding: 0.28rem 0.75rem;
-    border: 1px solid var(--border);
+    font-family: var(--sans); font-size: 0.82rem;
+    font-weight: 400; letter-spacing: 0;
+    padding: 0.35rem 0.9rem;
+    border: 1.5px solid var(--border);
     background: var(--bg); color: var(--text-muted);
     cursor: pointer; transition: all 0.12s;
     white-space: nowrap; line-height: 1.5;
   }
-  .chip:hover { color: var(--text); border-color: var(--text-dim); }
-  .chip.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .chip:hover { color: var(--text); border-color: var(--text-muted); }
+  .chip.active { background: var(--surface2); color: var(--text); border-color: var(--text-muted); }
 
   /* Source chip active colours */
   .chip-tender.active     { background: var(--tender-bg);     border-color: var(--tender-border);     color: var(--tender); }
@@ -239,19 +189,19 @@
 
   /* City select */
   .filter-select {
-    font-family: var(--mono); font-size: 0.6rem;
-    letter-spacing: 0.03em; padding: 0.28rem 1.8rem 0.28rem 0.65rem;
-    border: 1px solid var(--border); background: var(--bg);
+    font-family: var(--sans); font-size: 0.82rem;
+    font-weight: 400; padding: 0.35rem 2rem 0.35rem 0.75rem;
+    border: 1.5px solid var(--border); background: var(--bg);
     color: var(--text-muted); cursor: pointer;
     appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a09890'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a4540'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.55rem center;
-    background-size: 7px;
+    background-position: right 0.6rem center;
+    background-size: 8px;
     outline: none; transition: border-color 0.12s;
-    min-width: 130px;
+    min-width: 150px;
   }
-  .filter-select:focus { border-color: var(--text-dim); }
+  .filter-select:focus { border-color: var(--text); }
 
   /* Search row */
   .search-wrap {
@@ -263,14 +213,15 @@
     pointer-events: none; line-height: 1;
   }
   .search-input {
-    flex: 1; padding: 0.5rem 2.2rem 0.5rem 2.1rem;
-    background: var(--bg); border: 1px solid var(--border);
+    flex: 1; padding: 0.8rem 2.5rem 0.8rem 2.6rem;
+    background: var(--bg); border: 1.5px solid var(--border);
     color: var(--text); font-family: var(--sans);
-    font-size: 0.82rem; font-weight: 300; outline: none;
-    transition: border-color 0.12s;
+    font-size: 1rem; font-weight: 400; outline: none;
+    transition: border-color 0.15s;
+    border-radius: 0;
   }
-  .search-input:focus { border-color: var(--text-dim); }
-  .search-input::placeholder { color: var(--text-dim); }
+  .search-input:focus { border-color: var(--text); box-shadow: 0 0 0 3px rgba(28,26,24,0.07); }
+  .search-input::placeholder { color: var(--text-dim); font-size: 0.9rem; }
   .search-clear {
     position: absolute; right: 0.6rem;
     background: none; border: none; cursor: pointer;
@@ -299,10 +250,19 @@
   }
   .main-col { border-right: 1px solid var(--border); }
 
-  /* ── MAP ── */
-  #map {
-    height: 360px; background: #e8e4de;
+  /* ── MAP (footer position) ── */
+  .map-footer {
+    border-top: 1px solid var(--border);
+  }
+  .map-footer-label {
+    font-family: var(--mono); font-size: 0.57rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-dim); padding: 0.6rem 2rem;
+    background: var(--surface);
     border-bottom: 1px solid var(--border);
+  }
+  #map {
+    height: 300px; background: #e8e4de;
   }
 
   /* ── RESULTS HEADER ── */
@@ -315,17 +275,16 @@
     gap: 1rem;
   }
   .results-title {
-    font-family: var(--serif); font-size: 0.9rem;
-    font-style: italic; color: var(--text-muted);
+    font-family: var(--sans); font-size: 0.95rem;
+    font-weight: 500; color: var(--text);
     flex-shrink: 0;
   }
   .results-header-right {
     display: flex; align-items: center; gap: 1rem;
   }
   .results-count {
-    font-family: var(--mono); font-size: 0.58rem;
-    color: var(--text-dim); letter-spacing: 0.06em;
-    text-transform: uppercase; white-space: nowrap;
+    font-family: var(--sans); font-size: 0.82rem;
+    color: var(--text-muted); white-space: nowrap;
   }
   .sort-select {
     font-family: var(--mono); font-size: 0.58rem;
@@ -363,26 +322,26 @@
   /* ── CARDS ── */
   .card-list { display: flex; flex-direction: column; }
   .card {
-    padding: 1.35rem 2rem;
+    padding: 1.5rem 2rem;
     border-bottom: 1px solid var(--border-dim);
     cursor: pointer; transition: background 0.1s;
     display: grid;
-    grid-template-columns: 2px 1fr;
-    gap: 0 1.1rem;
+    grid-template-columns: 3px 1fr;
+    gap: 0 1.25rem;
   }
   .card:hover { background: var(--surface); }
+  .card-stripe { width: 3px; border-radius: 1px; align-self: stretch; }
 
-  .card-stripe { width: 2px; border-radius: 1px; align-self: stretch; }
   .card-stripe.tender     { background: var(--tender); }
   .card-stripe.planning   { background: var(--planning); }
   .card-stripe.brownfield { background: var(--brownfield); }
   .card-stripe.london     { background: var(--london); }
 
   .card-eyebrow {
-    font-family: var(--mono); font-size: 0.55rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    margin-bottom: 0.4rem;
-    display: flex; align-items: center; gap: 0.5rem;
+    font-family: var(--mono); font-size: 0.68rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 0.45rem;
+    display: flex; align-items: center; gap: 0.6rem;
   }
   .card-eyebrow.tender     { color: var(--tender); }
   .card-eyebrow.planning   { color: var(--planning); }
@@ -397,33 +356,33 @@
   }
 
   .card-title {
-    font-family: var(--serif); font-size: 0.95rem;
-    font-weight: 400; line-height: 1.3;
-    color: var(--text); margin-bottom: 0.15rem;
+    font-family: var(--serif); font-size: 1.1rem;
+    font-weight: 400; line-height: 1.35;
+    color: var(--text); margin-bottom: 0.2rem;
     letter-spacing: -0.01em;
   }
   .card-org {
-    font-size: 0.72rem; color: var(--text-muted);
-    font-weight: 300; margin-bottom: 0.4rem;
+    font-size: 0.85rem; color: var(--text-muted);
+    font-weight: 400; margin-bottom: 0.45rem;
   }
   .card-desc {
-    font-size: 0.78rem; color: var(--text-muted);
-    font-weight: 300; line-height: 1.5;
-    margin-bottom: 0.55rem;
+    font-size: 0.9rem; color: var(--text-muted);
+    font-weight: 300; line-height: 1.6;
+    margin-bottom: 0.6rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
   .card-meta {
-    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+    display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center;
   }
   .meta-item {
-    font-family: var(--mono); font-size: 0.56rem;
-    color: var(--text-dim); letter-spacing: 0.03em;
-    display: flex; align-items: center; gap: 0.25rem;
+    font-family: var(--mono); font-size: 0.72rem;
+    color: var(--text-muted); letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 0.3rem;
   }
-  .meta-item strong { color: var(--text-muted); font-weight: 400; }
+  .meta-item strong { color: var(--text); font-weight: 500; }
   .scale-badge {
     font-family: var(--mono); font-size: 0.55rem;
     letter-spacing: 0.04em; padding: 0.15rem 0.5rem;
@@ -473,9 +432,9 @@
   .city-list { list-style: none; }
   .city-item {
     display: flex; justify-content: space-between;
-    align-items: center; padding: 0.4rem 0;
+    align-items: center; padding: 0.5rem 0;
     border-bottom: 1px solid var(--border-dim);
-    cursor: pointer; font-size: 0.8rem; font-weight: 300;
+    cursor: pointer; font-size: 0.9rem; font-weight: 400;
     color: var(--text-muted); transition: color 0.1s;
     gap: 0.5rem;
   }
@@ -545,7 +504,7 @@
     margin-bottom: 0.7rem;
   }
   .detail-title {
-    font-family: var(--serif); font-size: 1.25rem;
+    font-family: var(--serif); font-size: 1.4rem;
     font-weight: 400; line-height: 1.3;
     letter-spacing: -0.01em; color: var(--text);
     padding-right: 3.5rem;
@@ -563,8 +522,8 @@
     color: var(--text-dim); margin-bottom: 0.2rem;
   }
   .detail-field-value {
-    font-size: 0.85rem; line-height: 1.65;
-    color: var(--text-muted); font-weight: 300;
+    font-size: 0.92rem; line-height: 1.7;
+    color: var(--text-muted); font-weight: 400;
   }
   .detail-link {
     display: inline-flex; align-items: center; gap: 0.4rem;
@@ -586,9 +545,7 @@
   @media (max-width: 900px) {
     .body-layout { grid-template-columns: 1fr; }
     .sidebar { border-top: 1px solid var(--border); }
-    .masthead { grid-template-columns: 1fr; gap: 1.5rem; }
-    .stat-ticker { grid-template-columns: 1fr; }
-    .stat-cell { border-right: none; border-bottom: 1px solid var(--border); }
+    .summary-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
     .detail-overlay { width: 100%; }
   }
 
@@ -620,43 +577,16 @@
   </div>
 </header>
 
-<!-- MASTHEAD -->
-<div class="masthead">
-  <div class="masthead-left">
-    <div class="masthead-eyebrow">Early-Stage Pipeline</div>
-    <h1>UK Place<br>Intelligence</h1>
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+  <div class="summary-intro">
+    Major regeneration opportunities across England — procurement, planning and brownfield land, 50+ homes.
   </div>
-  <div class="masthead-right">
-    <p>
-      <strong>Tracking the UK's built environment pipeline</strong> before consultant teams are appointed.
-      Aggregating procurement, planning applications and brownfield land
-      across England — curated for developers, architects and place-makers.
-    </p>
-
-  </div>
-</div>
-
-<!-- STATS -->
-<div class="stat-ticker">
-  <div class="stat-cell tender">
-    <span class="stat-label">Procurement Notices</span>
-    <div class="stat-num tender" id="stat-tender">—</div>
-    <div class="stat-sub">Preliminary market engagement</div>
-  </div>
-  <div class="stat-cell planning">
-    <span class="stat-label">Planning Applications</span>
-    <div class="stat-num planning" id="stat-planning">—</div>
-    <div class="stat-sub">50+ homes · last 60 days</div>
-  </div>
-  <div class="stat-cell brownfield">
-    <span class="stat-label">Brownfield Sites</span>
-    <div class="stat-num brownfield" id="stat-brownfield">—</div>
-    <div class="stat-sub">50+ homes · unbuilt sites</div>
-  </div>
-  <div class="stat-cell london">
-    <span class="stat-label">London Applications</span>
-    <div class="stat-num london" id="stat-london">—</div>
-    <div class="stat-sub">50+ homes · last 60 days</div>
+  <div class="summary-counts">
+    <span class="summary-count tender"><span id="stat-tender">—</span> Procurement</span>
+    <span class="summary-count planning"><span id="stat-planning">—</span> Planning</span>
+    <span class="summary-count brownfield"><span id="stat-brownfield">—</span> Brownfield</span>
+    <span class="summary-count london"><span id="stat-london">—</span> London</span>
   </div>
 </div>
 
@@ -667,7 +597,8 @@
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" class="search-input" id="search-input"
-        placeholder="Search by project name, authority or location…" oninput="handleSearch()">
+        placeholder="Search by location, scheme type, authority or keyword — e.g. 'Southwark', 'masterplan', 'brownfield'…"
+        oninput="handleSearch()" autocomplete="off" spellcheck="false">
       <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">✕</button>
     </div>
   </div>
@@ -680,17 +611,17 @@
         <button class="chip chip-tender active"      data-filter="tender"      onclick="toggleFilter('tender')">Procurement</button>
         <button class="chip chip-planning active"    data-filter="planning"    onclick="toggleFilter('planning')">Planning</button>
         <button class="chip chip-brownfield active"  data-filter="brownfield"  onclick="toggleFilter('brownfield')">Brownfield</button>
-        <button class="chip chip-london active"      data-filter="london"      onclick="toggleFilter('london')">London PLD</button>
+        <button class="chip chip-london active"      data-filter="london"      onclick="toggleFilter('london')">London</button>
       </div>
     </div>
 
     <div class="filter-divider"></div>
 
     <div class="filter-block">
-      <div class="filter-block-label">City</div>
+      <div class="filter-block-label">City / Region</div>
       <div class="filter-chips">
         <select class="filter-select" id="city-select" onchange="filterCity(this.value)">
-          <option value="all">All cities</option>
+          <option value="all">All locations</option>
         </select>
       </div>
     </div>
@@ -701,7 +632,7 @@
       <div class="filter-block-label">Status</div>
       <div class="filter-chips" id="status-filters">
         <button class="chip active" data-status="all"       onclick="filterStatus('all')">Any</button>
-        <button class="chip"        data-status="undecided" onclick="filterStatus('undecided')">Undecided</button>
+        <button class="chip"        data-status="undecided" onclick="filterStatus('undecided')">Live / undecided</button>
         <button class="chip"        data-status="approved"  onclick="filterStatus('approved')">Approved</button>
       </div>
     </div>
@@ -709,10 +640,9 @@
     <div class="filter-divider"></div>
 
     <div class="filter-block">
-      <div class="filter-block-label">Flags</div>
+      <div class="filter-block-label">Flag</div>
       <div class="filter-chips">
-        <button class="chip" id="regen-toggle" onclick="toggleRegen()">Regen only</button>
-        <button class="chip" id="residential-toggle" onclick="toggleResidential()">Has homes</button>
+        <button class="chip" id="regen-toggle" onclick="toggleRegen()">Regen flagged</button>
       </div>
     </div>
 
@@ -726,8 +656,6 @@
 <!-- BODY -->
 <div class="body-layout">
   <div class="main-col">
-    <div id="map"></div>
-
     <div class="results-header">
       <div class="results-title">Pipeline Projects</div>
       <div class="results-header-right">
@@ -748,6 +676,11 @@
         <div class="loading-label">Fetching live data — Find a Tender · PlanIt · Planning Data</div>
         <div class="loading-track"><div class="loading-fill"></div></div>
       </div>
+    </div>
+
+    <div class="map-footer">
+      <div class="map-footer-label">Map view</div>
+      <div id="map"></div>
     </div>
   </div>
 
@@ -1363,11 +1296,10 @@ function filterStatus(status) {
 }
 
 function handleSearch() {
-  if (allItems.length === 0) return; // don't run before data loads
   searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
   const clearBtn = document.getElementById('search-clear');
   if (clearBtn) clearBtn.classList.toggle('visible', searchTerm.length > 0);
-  applyFilters();
+  if (allItems.length > 0) applyFilters();
 }
 
 function clearSearch() {
