@@ -189,62 +189,107 @@
     letter-spacing: 0.04em;
   }
 
-  /* ── TOOLBAR ── */
-  .toolbar {
-    padding: 0.85rem 2rem;
+  /* ── FILTER PANEL ── */
+  .filter-panel {
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    gap: 0.75rem; flex-wrap: wrap;
     background: var(--surface);
   }
-  .toolbar-sep {
-    width: 1px; height: 16px;
-    background: var(--border);
-    flex-shrink: 0;
+  .filter-row {
+    padding: 0.7rem 2rem;
+    display: flex; align-items: center;
+    gap: 0; flex-wrap: wrap;
   }
-  .toolbar-label {
+  .filter-row-search {
+    padding: 0.75rem 2rem 0;
+    border-bottom: none;
+  }
+  .filter-block {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.4rem 0;
+  }
+  .filter-block-right { margin-left: auto; }
+  .filter-block-label {
     font-family: var(--mono); font-size: 0.57rem;
     text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); flex-shrink: 0;
+    color: var(--text-dim); white-space: nowrap; flex-shrink: 0;
   }
-  .filter-group { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+  .filter-divider {
+    width: 1px; height: 20px;
+    background: var(--border); margin: 0 1rem; flex-shrink: 0;
+  }
+  .filter-chips { display: flex; gap: 0.25rem; flex-wrap: wrap; align-items: center; }
 
-  .filter-btn {
-    font-family: var(--mono); font-size: 0.62rem;
-    letter-spacing: 0.03em; padding: 0.3rem 0.8rem;
+  /* Chips */
+  .chip {
+    font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.04em; padding: 0.28rem 0.75rem;
     border: 1px solid var(--border);
-    background: transparent; color: var(--text-muted);
+    background: var(--bg); color: var(--text-muted);
     cursor: pointer; transition: all 0.12s;
-    white-space: nowrap; line-height: 1.4;
+    white-space: nowrap; line-height: 1.5;
   }
-  .filter-btn:hover { color: var(--text); border-color: var(--text-dim); }
-  .filter-btn.active { color: var(--text); background: var(--surface2); border-color: var(--border); }
+  .chip:hover { color: var(--text); border-color: var(--text-dim); }
+  .chip.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
 
-  /* Type filter active states */
-  .filter-btn.type-btn.tender.active   { background: var(--tender-bg); border-color: var(--tender-border); color: var(--tender); }
-  .filter-btn.type-btn.planning.active { background: var(--planning-bg); border-color: var(--planning-border); color: var(--planning); }
-  .filter-btn.type-btn.brownfield.active { background: var(--brownfield-bg); border-color: var(--brownfield-border); color: var(--brownfield); }
-  .filter-btn.type-btn.london.active { background: var(--london-bg); border-color: var(--london-border); color: var(--london); }
+  /* Source chip active colours */
+  .chip-tender.active     { background: var(--tender-bg);     border-color: var(--tender-border);     color: var(--tender); }
+  .chip-planning.active   { background: var(--planning-bg);   border-color: var(--planning-border);   color: var(--planning); }
+  .chip-brownfield.active { background: var(--brownfield-bg); border-color: var(--brownfield-border); color: var(--brownfield); }
+  .chip-london.active     { background: var(--london-bg);     border-color: var(--london-border);     color: var(--london); }
 
+  /* City select */
+  .filter-select {
+    font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.03em; padding: 0.28rem 1.8rem 0.28rem 0.65rem;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text-muted); cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a09890'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    background-size: 7px;
+    outline: none; transition: border-color 0.12s;
+    min-width: 130px;
+  }
+  .filter-select:focus { border-color: var(--text-dim); }
+
+  /* Search row */
   .search-wrap {
-    flex: 1; min-width: 200px; position: relative;
+    width: 100%; position: relative; display: flex; align-items: center;
   }
-  .search-wrap::before {
-    content: '⌕'; position: absolute;
-    left: 0.7rem; top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-dim); font-size: 0.95rem;
-    pointer-events: none;
+  .search-icon {
+    position: absolute; left: 0.75rem;
+    color: var(--text-dim); font-size: 1rem;
+    pointer-events: none; line-height: 1;
   }
   .search-input {
-    width: 100%; padding: 0.35rem 0.8rem 0.35rem 2rem;
+    flex: 1; padding: 0.5rem 2.2rem 0.5rem 2.1rem;
     background: var(--bg); border: 1px solid var(--border);
     color: var(--text); font-family: var(--sans);
-    font-size: 0.78rem; font-weight: 300; outline: none;
+    font-size: 0.82rem; font-weight: 300; outline: none;
     transition: border-color 0.12s;
   }
   .search-input:focus { border-color: var(--text-dim); }
   .search-input::placeholder { color: var(--text-dim); }
+  .search-clear {
+    position: absolute; right: 0.6rem;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-dim); font-size: 0.7rem; padding: 0.2rem;
+    display: none; line-height: 1;
+  }
+  .search-clear:hover { color: var(--text); }
+  .search-clear.visible { display: block; }
+
+  /* Clear all */
+  .clear-all-btn {
+    font-family: var(--mono); font-size: 0.57rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.28rem 0.7rem;
+    border: 1px solid var(--border); background: none;
+    color: var(--text-dim); cursor: pointer;
+    transition: all 0.12s;
+  }
+  .clear-all-btn:hover { color: var(--tender); border-color: var(--tender-border); }
 
   /* ── LAYOUT ── */
   .body-layout {
@@ -578,26 +623,66 @@
   </div>
 </div>
 
-<!-- TOOLBAR -->
-<div class="toolbar">
-  <span class="toolbar-label">City</span>
-  <div class="filter-group" id="city-filter-btns">
-    <button class="filter-btn active" data-city="all" onclick="filterCity('all')">All</button>
+<!-- FILTER PANEL -->
+<div class="filter-panel">
+
+  <div class="filter-row filter-row-search">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="search-input"
+        placeholder="Search by project name, authority or location…" oninput="handleSearch()">
+      <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">✕</button>
+    </div>
   </div>
-  <div class="toolbar-sep"></div>
-  <span class="toolbar-label">Type</span>
-  <div class="filter-group" id="type-filters">
-    <button class="filter-btn type-btn tender active"   data-filter="tender"     onclick="toggleFilter('tender')">Procurement</button>
-    <button class="filter-btn type-btn planning active" data-filter="planning"   onclick="toggleFilter('planning')">Planning</button>
-    <button class="filter-btn type-btn brownfield active" data-filter="brownfield" onclick="toggleFilter('brownfield')">Brownfield</button>
-    <button class="filter-btn type-btn london active" data-filter="london" onclick="toggleFilter('london')">London</button>
-  </div>
-  <div class="toolbar-sep"></div>
-  <span class="toolbar-label">Regen only</span>
-  <button class="filter-btn" id="regen-toggle" onclick="toggleRegen()">Off</button>
-  <div class="search-wrap">
-    <input type="text" class="search-input" id="search-input"
-      placeholder="Search projects, organisations, locations…" oninput="handleSearch()">
+
+  <div class="filter-row">
+
+    <div class="filter-block">
+      <div class="filter-block-label">Source</div>
+      <div class="filter-chips" id="type-filters">
+        <button class="chip chip-tender active"      data-filter="tender"      onclick="toggleFilter('tender')">Procurement</button>
+        <button class="chip chip-planning active"    data-filter="planning"    onclick="toggleFilter('planning')">Planning</button>
+        <button class="chip chip-brownfield active"  data-filter="brownfield"  onclick="toggleFilter('brownfield')">Brownfield</button>
+        <button class="chip chip-london active"      data-filter="london"      onclick="toggleFilter('london')">London PLD</button>
+      </div>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-block">
+      <div class="filter-block-label">City</div>
+      <div class="filter-chips">
+        <select class="filter-select" id="city-select" onchange="filterCity(this.value)">
+          <option value="all">All cities</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-block">
+      <div class="filter-block-label">Status</div>
+      <div class="filter-chips" id="status-filters">
+        <button class="chip active" data-status="all"       onclick="filterStatus('all')">Any</button>
+        <button class="chip"        data-status="undecided" onclick="filterStatus('undecided')">Undecided</button>
+        <button class="chip"        data-status="approved"  onclick="filterStatus('approved')">Approved</button>
+      </div>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-block">
+      <div class="filter-block-label">Flags</div>
+      <div class="filter-chips">
+        <button class="chip" id="regen-toggle" onclick="toggleRegen()">Regen only</button>
+        <button class="chip" id="residential-toggle" onclick="toggleResidential()">Has homes</button>
+      </div>
+    </div>
+
+    <div class="filter-block filter-block-right">
+      <button class="clear-all-btn" onclick="clearAllFilters()">Clear all</button>
+    </div>
+
   </div>
 </div>
 
@@ -682,10 +767,11 @@ let allItems = [];
 let filteredItems = [];
 let activeFilters = { tender: true, planning: true, brownfield: true, london: true };
 let activeCity = 'all';
+let activeStatus = 'all';   // all | undecided | approved
 let regenOnly = false;
+let residentialOnly = false;
 let searchTerm = '';
 let map, markerLayer;
-let cityBtnsAdded = new Set(['all']);
 
 // Date
 document.getElementById('header-date').textContent =
@@ -837,7 +923,7 @@ async function fetchTenders() {
   }
 }
 
-// ── FETCH: PLANIT (fixed)
+// ── FETCH: PLANIT
 async function fetchPlanning() {
   try {
     const res = await fetch('/api/planning');
@@ -845,52 +931,55 @@ async function fetchPlanning() {
     const data = await res.json();
     const items = [];
 
-    for (const cityResult of (data.cities || [])) {
-      const cityName = cityResult.city;
-      // PlanIt JSON returns records array at top level
-      const records = cityResult.records || [];
+    // All records come back in one England-wide batch.
+    // area_name on each record tells us the authority/city.
+    const records = (data.cities || []).flatMap(c => c.records || []);
 
-      for (const app of records) {
-        const title = app.description || app.app_type || 'Planning Application';
-        const desc = (app.description || '').toLowerCase();
-        const isRegen = REGEN_KEYWORDS.some(kw => desc.includes(kw));
+    for (const app of records) {
+      const title = app.description || app.app_type || 'Planning Application';
+      const desc = (app.description || '').toLowerCase();
+      const isRegen = REGEN_KEYWORDS.some(kw => desc.includes(kw));
 
-        // PlanIt JSON: lat/lng are in other_fields, or use location_y/location_x
-        let lat = parseFloat(app.location_y ?? app.other_fields?.lat);
-        let lng = parseFloat(app.location_x ?? app.other_fields?.lng);
+      // PlanIt JSON: coordinates come as location_x (lng) / location_y (lat)
+      let lat = parseFloat(app.location_y);
+      let lng = parseFloat(app.location_x);
 
-        // GeoJSON location field: { type: "Point", coordinates: [lng, lat] }
-        if ((isNaN(lat) || isNaN(lng)) && app.location?.coordinates) {
-          const c = app.location.coordinates;
-          if (Array.isArray(c) && c.length === 2) { lng = c[0]; lat = c[1]; }
-        }
-
-        // Fallback to city centre with jitter
-        if (isNaN(lat) || isNaN(lng)) {
-          const cc = CITY_COORDS[cityName];
-          if (cc) {
-            lat = cc.lat + (Math.random() - 0.5) * 0.06;
-            lng = cc.lng + (Math.random() - 0.5) * 0.08;
-          }
-        }
-
-        items.push({
-          id: 'p_' + (app.uid || app.name || Math.random().toString(36).substr(2,8)),
-          type: 'planning',
-          title,
-          org: app.area_name || cityName,
-          location: [app.address, cityName].filter(Boolean).join(', '),
-          description: app.description || '',
-          status: app.app_state || '',
-          reference: app.uid || app.name || '',
-          published: app.start_date || '',
-          url: app.link ? `https://www.planit.org.uk${app.link}` : app.url || '',
-          lat: isNaN(lat) ? null : lat,
-          lng: isNaN(lng) ? null : lng,
-          city: cityName,
-          isRegen,
-        });
+      // GeoJSON location field fallback: { type:"Point", coordinates:[lng,lat] }
+      if ((isNaN(lat) || isNaN(lng)) && app.location?.coordinates) {
+        const c = app.location.coordinates;
+        if (Array.isArray(c) && c.length === 2) { lng = c[0]; lat = c[1]; }
       }
+
+      // Match to a known city from area_name or address for display/filtering
+      const authorityStr = (app.area_name || app.address || '').toLowerCase();
+      let matchedCity = null;
+      for (const city of Object.keys(CITY_COORDS)) {
+        if (authorityStr.includes(city.toLowerCase())) { matchedCity = city; break; }
+      }
+
+      // Fallback geo: jitter around matched city centre
+      if ((isNaN(lat) || isNaN(lng)) && matchedCity) {
+        const cc = CITY_COORDS[matchedCity];
+        lat = cc.lat + (Math.random() - 0.5) * 0.06;
+        lng = cc.lng + (Math.random() - 0.5) * 0.08;
+      }
+
+      items.push({
+        id: 'p_' + (app.uid || app.name || Math.random().toString(36).substr(2,8)),
+        type: 'planning',
+        title,
+        org: app.area_name || '',
+        location: app.address || '',
+        description: app.description || '',
+        status: app.app_state || '',
+        reference: app.uid || app.name || '',
+        published: app.start_date || '',
+        url: app.link ? `https://www.planit.org.uk${app.link}` : app.url || '',
+        lat: isNaN(lat) ? null : lat,
+        lng: isNaN(lng) ? null : lng,
+        city: matchedCity,
+        isRegen,
+      });
     }
     return items;
   } catch(e) {
@@ -959,35 +1048,36 @@ async function fetchLondon() {
     const items = [];
 
     for (const app of (data.records || [])) {
-      const title = app.development_description || app.site_name || 'London Planning Application';
-      const desc = (app.development_description || '').toLowerCase();
+      const title = app.description || app.site_name || 'London Planning Application';
+      const desc = (app.description || '').toLowerCase();
       const isRegen = REGEN_KEYWORDS.some(kw => desc.includes(kw));
 
-      let lat = parseFloat(app.latitude);
-      let lng = parseFloat(app.longitude);
+      // PLD centroid field: { lat: 51.5, lon: -0.1 }
+      const lat = app.centroid?.lat ?? null;
+      const lng = app.centroid?.lon ?? null;
 
-      // Fallback to central London jitter if no coords
-      if (isNaN(lat) || isNaN(lng)) {
-        lat = 51.5074 + (Math.random() - 0.5) * 0.25;
-        lng = -0.1278 + (Math.random() - 0.5) * 0.35;
-      }
+      // Residential units nested under application_details
+      const units = app.application_details?.total_no_proposed_residential_units
+                 || app.total_no_proposed_residential_units
+                 || null;
 
-      const units = app.total_no_proposed_residential_units;
+      const address = [app.site_number, app.street_name, app.postcode]
+        .filter(Boolean).join(' ');
 
       items.push({
         id: 'l_' + (app.id || app.lpa_app_no || Math.random().toString(36).substr(2,8)),
         type: 'london',
         title,
-        org: app.lpa_name || 'London Borough',
-        location: [app.site_address, app.postcode].filter(Boolean).join(', '),
-        description: app.development_description || '',
-        status: app.decision || '',
+        org: app.lpa_name || app.borough || 'London Borough',
+        location: address,
+        description: app.description || '',
+        status: app.decision || app.status || '',
         reference: app.lpa_app_no || '',
         published: app.valid_date || '',
         units: units ? String(units) : null,
-        url: app.url_planning_app || '',
-        lat: isNaN(lat) ? null : lat,
-        lng: isNaN(lng) ? null : lng,
+        url: app.url_planning_app || (app.pp_id ? `https://www.planningportal.co.uk/planning/planning-applications/search-for-planning-applications?ppid=${app.pp_id}` : ''),
+        lat,
+        lng,
         city: 'London',
         isRegen,
       });
@@ -1060,19 +1150,19 @@ function renderCityBreakdown(items) {
     </li>
   `).join('');
 
-  // Add top city buttons to toolbar (only once, avoid duplicates)
-  const btnContainer = document.getElementById('city-filter-btns');
-  sorted.slice(0, 5).forEach(([city]) => {
-    if (!cityBtnsAdded.has(city)) {
-      cityBtnsAdded.add(city);
-      const btn = document.createElement('button');
-      btn.className = 'filter-btn';
-      btn.dataset.city = city;
-      btn.textContent = city;
-      btn.onclick = () => filterCity(city);
-      btnContainer.appendChild(btn);
-    }
-  });
+  // Populate the city <select> dropdown
+  const sel = document.getElementById('city-select');
+  if (sel) {
+    // Keep the "All cities" option, rebuild the rest
+    sel.innerHTML = '<option value="all">All cities</option>';
+    sorted.forEach(([city, count]) => {
+      const opt = document.createElement('option');
+      opt.value = city;
+      opt.textContent = `${city} (${count})`;
+      sel.appendChild(opt);
+    });
+    sel.value = activeCity;
+  }
 }
 
 function extractCity(loc) {
@@ -1095,12 +1185,24 @@ function escAttr(str) {
 // ── FILTERS
 function applyFilters() {
   filteredItems = allItems.filter(item => {
+    // Source type
     if (!activeFilters[item.type]) return false;
+    // Regen flag
     if (regenOnly && !item.isRegen) return false;
+    // Residential units
+    if (residentialOnly && !item.units) return false;
+    // City
     if (activeCity !== 'all') {
       const city = item.city || extractCity(item.location || '');
       if (city !== activeCity) return false;
     }
+    // Status
+    if (activeStatus !== 'all') {
+      const s = (item.status || '').toLowerCase();
+      if (activeStatus === 'undecided' && !(s.includes('undecided') || s.includes('consideration') || s.includes('pending') || s === '')) return false;
+      if (activeStatus === 'approved'  && !(s.includes('approved') || s.includes('permitted') || s.includes('granted') || s.includes('conditions'))) return false;
+    }
+    // Search
     if (searchTerm) {
       const hay = `${item.title} ${item.org} ${item.location} ${item.description}`.toLowerCase();
       if (!hay.includes(searchTerm)) return false;
@@ -1114,30 +1216,75 @@ function applyFilters() {
 
 function toggleFilter(type) {
   activeFilters[type] = !activeFilters[type];
-  const btn = document.querySelector(`.filter-btn.type-btn[data-filter="${type}"]`);
-  btn.classList.toggle('active', activeFilters[type]);
+  const btn = document.querySelector(`.chip[data-filter="${type}"]`);
+  if (btn) btn.classList.toggle('active', activeFilters[type]);
   applyFilters();
 }
 
 function toggleRegen() {
   regenOnly = !regenOnly;
   const btn = document.getElementById('regen-toggle');
-  btn.textContent = regenOnly ? 'On' : 'Off';
   btn.classList.toggle('active', regenOnly);
+  applyFilters();
+}
+
+function toggleResidential() {
+  residentialOnly = !residentialOnly;
+  const btn = document.getElementById('residential-toggle');
+  btn.classList.toggle('active', residentialOnly);
   applyFilters();
 }
 
 function filterCity(city) {
   activeCity = city;
-  document.querySelectorAll('[data-city]').forEach(b =>
-    b.classList.toggle('active', b.dataset.city === city));
+  const sel = document.getElementById('city-select');
+  if (sel) sel.value = city;
   document.querySelectorAll('[data-city-item]').forEach(li =>
     li.classList.toggle('active', li.dataset.cityItem === city));
   applyFilters();
 }
 
+function filterStatus(status) {
+  activeStatus = status;
+  document.querySelectorAll('[data-status]').forEach(b =>
+    b.classList.toggle('active', b.dataset.status === status));
+  applyFilters();
+}
+
 function handleSearch() {
+  if (allItems.length === 0) return; // don't run before data loads
   searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+  const clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.classList.toggle('visible', searchTerm.length > 0);
+  applyFilters();
+}
+
+function clearSearch() {
+  searchTerm = '';
+  const input = document.getElementById('search-input');
+  const clearBtn = document.getElementById('search-clear');
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.classList.remove('visible');
+  applyFilters();
+}
+
+function clearAllFilters() {
+  // Reset all state
+  activeFilters = { tender: true, planning: true, brownfield: true, london: true };
+  activeCity = 'all';
+  activeStatus = 'all';
+  regenOnly = false;
+  residentialOnly = false;
+  clearSearch();
+  // Reset UI
+  document.querySelectorAll('.chip[data-filter]').forEach(b => b.classList.add('active'));
+  document.querySelectorAll('[data-status]').forEach(b =>
+    b.classList.toggle('active', b.dataset.status === 'all'));
+  document.getElementById('regen-toggle')?.classList.remove('active');
+  document.getElementById('residential-toggle')?.classList.remove('active');
+  const sel = document.getElementById('city-select');
+  if (sel) sel.value = 'all';
+  document.querySelectorAll('[data-city-item]').forEach(li => li.classList.remove('active'));
   applyFilters();
 }
 
@@ -1192,6 +1339,7 @@ document.querySelectorAll('.sidebar-section').forEach(sec => {
     if (!e.target.closest('.sidebar-heading')) return;
     const body = sec.querySelector('.sources-body');
     if (!body) return;
+    sec.classList.toggle('sources-open');
     const isNowOpen = sec.classList.contains('sources-open');
     body.style.display = isNowOpen ? 'block' : 'none';
     const arrow = sec.querySelector('.sidebar-heading span');
