@@ -727,21 +727,23 @@ function initMap() {
     attribution: '© OpenStreetMap contributors © CARTO',
     subdomains: 'abcd', maxZoom: 19
   }).addTo(map);
+  // Force tile refresh in case container wasn't fully laid out
+  setTimeout(() => map.invalidateSize(), 200);
 }
 
 function addMarker(item) {
-  if (!item.lat || !item.lng) return;
+  if (!item.lat || !item.lng || isNaN(item.lat) || isNaN(item.lng)) return;
   const colors = { tender: '#c8401a', planning: '#1a5c8a', brownfield: '#2d7a4a' };
   const color = colors[item.type] || '#666';
   const icon = L.divIcon({
-    html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
     className: '',
-    iconSize: [12, 12],
-    iconAnchor: [6, 6]
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
   });
   const marker = L.marker([item.lat, item.lng], { icon })
     .addTo(map)
-    .bindPopup(`<strong style="font-family:'Playfair Display',serif;">${item.title}</strong><br><small>${item.org || item.location || ''}</small>`);
+    .bindPopup(`<strong style="font-family:'Playfair Display',serif;font-size:0.95rem;">${item.title}</strong><br><small style="color:#666;">${item.org || item.location || ''}</small>`, { maxWidth: 280 });
   markers.push(marker);
 }
 
@@ -772,13 +774,13 @@ async function fetchTenders() {
       const noticeType = (release.tag || []).join(' ');
 
       // Filter to UK2 (preliminary market engagement) style or planning stage
-      const isEarlyStage = noticeType.includes('planning') || tender.status === 'planned';
+      const isEarlyStage = noticeType.includes('planning') || tender.status === 'planned' || tender.status === 'active';
 
-      // Keyword filter for regeneration relevance
+      // Keyword filter for regeneration relevance - show all early stage, tag regen ones
       const descLower = description.toLowerCase();
       const isRegen = REGEN_KEYWORDS.some(kw => descLower.includes(kw));
 
-      if (!isEarlyStage || !isRegen) continue;
+      if (!isEarlyStage) continue;
 
       // Extract location
       const addresses = (tender.items || []).flatMap(i => i.deliveryAddresses || []);
@@ -812,7 +814,7 @@ async function fetchTenders() {
         published: release.date ? new Date(release.date).toLocaleDateString('en-GB') : null,
         url: `https://www.find-tender.service.gov.uk/Notice/${release.id}`,
         lat, lng,
-        tags: ['Market Engagement', 'Early Stage']
+        tags: ['Market Engagement', 'Early Stage', ...(isRegen ? ['Regen Relevant'] : [])]
       });
     }
 
@@ -842,7 +844,7 @@ async function fetchPlanning() {
         const props = app.properties || app;
         const description = (props.description || props.development || props.summary || '').toLowerCase();
         const isRegen = REGEN_KEYWORDS.some(kw => description.includes(kw));
-        if (!isRegen) continue;
+        // Show all applications, tag regen ones - keyword filter was too aggressive
 
         const lat = parseFloat(props.lat || props.latitude || (app.geometry?.coordinates?.[1]));
         const lng = parseFloat(props.lng || props.longitude || props.long || (app.geometry?.coordinates?.[0]));
@@ -861,7 +863,7 @@ async function fetchPlanning() {
           lng: isNaN(lng) ? CITY_COORDS[cityName]?.lng + (Math.random()-0.5)*0.03 : lng,
           city: cityName,
           published: props.validated || props.received_date || props.start_date,
-          tags: ['Major Application', cityName]
+          tags: ['Major Application', cityName, ...(isRegen ? ['Regen Relevant'] : [])]
         });
       }
     }
@@ -885,8 +887,17 @@ async function fetchBrownfield() {
     const items = [];
 
     for (const entity of entities) {
-      const lat = parseFloat(entity.latitude || entity.point?.split(',')[1]);
-      const lng = parseFloat(entity.longitude || entity.point?.split(',')[0]);
+      // point field can be WKT "POINT(lng lat)" or "lng,lat" CSV
+      let lat = parseFloat(entity.latitude);
+      let lng = parseFloat(entity.longitude);
+      if ((isNaN(lat) || isNaN(lng)) && entity.point) {
+        const wkt = entity.point.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+        if (wkt) { lng = parseFloat(wkt[1]); lat = parseFloat(wkt[2]); }
+        else {
+          const parts = entity.point.split(',');
+          lng = parseFloat(parts[0]); lat = parseFloat(parts[1]);
+        }
+      }
 
       items.push({
         id: entity.reference || entity.entity,
@@ -1105,8 +1116,11 @@ async function init() {
 
   // Fit map to markers if any
   if (markers.length > 0) {
-    const group = L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.1));
+    try {
+      const group = L.featureGroup(markers);
+      const bounds = group.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.1), { maxZoom: 10 });
+    } catch(e) { /* keep default view */ }
   }
 }
 
