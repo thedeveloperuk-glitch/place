@@ -3,729 +3,236 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Developer Intelligence — UK Regeneration Pipeline</title>
+<title>The Developer Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg:           #faf9f7;
-    --surface:      #f2f0ec;
-    --surface2:     #e8e4de;
-    --border:       #d4cfc8;
-    --border-dim:   #dedad4;
-    --text:         #1c1a18;
-    --text-muted:   #4a4540;
-    --text-dim:     #8a8480;
-    --tender:       #a02818;
-    --tender-bg:    #fdf0ee;
-    --tender-border:#e8b8b0;
-    --planning:     #1a4e90;
-    --planning-bg:  #eef2fa;
-    --planning-border:#a8c0e0;
-    --brownfield:   #1a6038;
-    --brownfield-bg:#eef6f0;
-    --brownfield-border:#a0ccb0;
-    --london:        #6a3090;
-    --london-bg:     #f4eef8;
-    --london-border: #c8a8e0;
-    --gold:         #7a5c10;
-    --serif:  'Instrument Serif', Georgia, serif;
-    --sans:   'Instrument Sans', system-ui, sans-serif;
-    --mono:   'DM Mono', monospace;
-    --radius: 0px;
+    --bg:#faf9f7;--surface:#f3f1ed;--surface2:#e8e4de;
+    --border:#d4cfc8;--border-dim:#e0dcd6;
+    --text:#1c1a18;--text-muted:#4a4540;--text-dim:#9a948e;
+    --procurement:#8b1a0a;--procurement-bg:#fdf0ee;--procurement-border:#e0b0a8;
+    --pipeline:#1a4e90;--pipeline-bg:#eef2fa;--pipeline-border:#a8c0e0;
+    --land:#1a6038;--land-bg:#eef6f0;--land-border:#a0ccb0;
+    --serif:'Playfair Display',Georgia,serif;
+    --serif-body:'Source Serif 4',Georgia,serif;
+    --sans:'Source Sans 3',system-ui,sans-serif;
   }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
+  /* HEADER */
+  header{background:var(--text);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;height:56px;}
+  .logo{font-family:var(--serif);font-size:1.1rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:0.75rem;}
+  .logo-divider{color:var(--procurement);opacity:0.7;}
+  .logo-sub{font-family:var(--sans);font-size:0.72rem;font-weight:400;color:rgba(255,255,255,0.45);letter-spacing:0.06em;text-transform:uppercase;}
+  .header-right{display:flex;align-items:center;gap:1.5rem;}
+  .live-badge{display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;text-transform:uppercase;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade8080;animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .header-date{font-size:0.7rem;color:rgba(255,255,255,0.35);letter-spacing:0.04em;}
 
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 16px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
+  /* MAP */
+  #map{height:340px;width:100%;background:#e8e4de;border-bottom:1px solid var(--border);}
 
-  /* ── HEADER ── */
-  header {
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    height: 52px;
-  }
+  /* TABS */
+  .tabs-bar{background:var(--text);display:flex;align-items:stretch;position:sticky;top:56px;z-index:900;}
+  .tab-btn{padding:0 1.75rem;height:48px;display:flex;align-items:center;gap:0.6rem;font-family:var(--sans);font-size:0.88rem;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:color 0.15s,border-color 0.15s;white-space:nowrap;}
+  .tab-btn:hover{color:rgba(255,255,255,0.8);}
+  .tab-btn.active{color:#fff;}
+  .tab-btn.active.tab-procurement{border-bottom-color:var(--procurement);}
+  .tab-btn.active.tab-pipeline{border-bottom-color:#60a5fa;}
+  .tab-btn.active.tab-land{border-bottom-color:#4ade80;}
+  .tab-count{font-size:0.7rem;padding:0.1rem 0.45rem;border-radius:10px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);min-width:1.6rem;text-align:center;}
+  .tab-btn.active .tab-count{background:rgba(255,255,255,0.18);color:#fff;}
 
-  .logo {
-    font-family: var(--serif);
-    font-size: 1.05rem;
-    font-style: normal;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    letter-spacing: 0.01em;
-  }
-  .logo-mark {
-    width: 18px; height: 18px;
-    background: var(--tender);
-    flex-shrink: 0;
-  }
-  .logo-sub {
-    font-style: normal;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    font-family: var(--sans);
-    font-weight: 300;
-    letter-spacing: 0.01em;
-  }
+  /* FILTER BAR */
+  .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0.8rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  .search-wrap{flex:1;min-width:240px;position:relative;display:flex;align-items:center;}
+  .search-icon{position:absolute;left:0.75rem;font-size:1.05rem;color:var(--text-dim);pointer-events:none;top:50%;transform:translateY(-50%);}
+  .search-input{width:100%;padding:0.6rem 2.4rem 0.6rem 2.4rem;background:var(--bg);border:1.5px solid var(--border);color:var(--text);font-family:var(--sans);font-size:0.92rem;outline:none;transition:border-color 0.15s;}
+  .search-input:focus{border-color:var(--text);}
+  .search-input::placeholder{color:var(--text-dim);}
+  .search-clear{position:absolute;right:0.6rem;background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.8rem;display:none;padding:0.2rem;}
+  .search-clear.visible{display:block;}
+  .filter-group{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;}
+  .filter-label{font-size:0.78rem;font-weight:500;color:var(--text-muted);white-space:nowrap;}
+  .chip{font-family:var(--sans);font-size:0.8rem;padding:0.28rem 0.8rem;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;transition:all 0.12s;white-space:nowrap;}
+  .chip:hover{border-color:var(--text-muted);color:var(--text);}
+  .chip.active{background:var(--text);color:#fff;border-color:var(--text);}
+  .filter-select{font-family:var(--sans);font-size:0.82rem;padding:0.3rem 2rem 0.3rem 0.7rem;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a4540'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:8px;outline:none;min-width:140px;}
+  .filter-select:focus{border-color:var(--text);}
+  .results-meta{margin-left:auto;font-size:0.8rem;color:var(--text-dim);white-space:nowrap;}
 
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
-  .live-badge {
-    display: flex; align-items: center; gap: 0.35rem;
-    font-family: var(--mono); font-size: 0.58rem;
-    letter-spacing: 0.08em; color: var(--brownfield);
-    text-transform: uppercase;
-  }
-  .live-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--brownfield);
-    animation: blink 2.2s ease-in-out infinite;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
-  .header-date {
-    font-family: var(--mono); font-size: 0.58rem;
-    color: var(--text-dim); letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
+  /* TAB PANELS */
+  .tab-panel{display:none;}.tab-panel.active{display:block;}
 
-  /* ── SUMMARY BAR ── */
-  .summary-bar {
-    border-bottom: 1px solid var(--border);
-    padding: 0.85rem 2rem;
-    display: flex; align-items: center;
-    justify-content: space-between; gap: 2rem;
-    background: var(--bg);
-    flex-wrap: wrap;
-  }
-  .summary-intro {
-    font-size: 0.9rem; color: var(--text-muted);
-    font-weight: 400; flex: 1; min-width: 200px; line-height: 1.5;
-  }
-  .summary-counts {
-    display: flex; gap: 1.5rem; flex-shrink: 0; flex-wrap: wrap;
-    align-items: center;
-  }
-  .summary-count {
-    font-family: var(--sans); font-size: 0.82rem;
-    font-weight: 400; color: var(--text-muted);
-  }
-  .summary-count span { font-size: 1rem; font-weight: 600; margin-right: 0.25em; }
-  .summary-count.tender span    { color: var(--tender); }
-  .summary-count.planning span  { color: var(--planning); }
-  .summary-count.brownfield span{ color: var(--brownfield); }
-  .summary-count.london span    { color: var(--london); }
+  /* LOADING / EMPTY */
+  .loading-state{padding:4rem 2rem;text-align:center;}
+  .loading-label{font-size:0.88rem;color:var(--text-dim);margin-bottom:1.5rem;}
+  .loading-track{width:200px;height:2px;background:var(--border);margin:0 auto;overflow:hidden;}
+  .loading-fill{height:100%;background:var(--procurement);animation:loadSlide 1.6s ease-in-out infinite;width:40%;}
+  @keyframes loadSlide{0%{transform:translateX(-300%)}100%{transform:translateX(500%)}}
+  .empty-state{padding:4rem 2rem;text-align:center;font-size:0.9rem;color:var(--text-dim);line-height:2;}
 
-  /* ── FILTER PANEL ── */
-  .filter-panel {
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .filter-row {
-    padding: 0.7rem 2rem;
-    display: flex; align-items: center;
-    gap: 0; flex-wrap: wrap;
-  }
-  .filter-row-search {
-    padding: 0.85rem 2rem 0.5rem;
-    border-bottom: none;
-  }
-  .filter-block {
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.4rem 0;
-  }
-  .filter-block-right { margin-left: auto; }
-  .filter-block-label {
-    font-family: var(--sans); font-size: 0.78rem;
-    font-weight: 500; text-transform: none; letter-spacing: 0;
-    color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
-  }
-  .filter-divider {
-    width: 1px; height: 20px;
-    background: var(--border); margin: 0 1rem; flex-shrink: 0;
-  }
-  .filter-chips { display: flex; gap: 0.25rem; flex-wrap: wrap; align-items: center; }
+  /* PROCUREMENT CARDS */
+  .proc-card{display:grid;grid-template-columns:4px 1fr auto;gap:0 1.5rem;padding:1.6rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;align-items:start;}
+  .proc-card:hover{background:var(--surface);}
+  .proc-stripe{background:var(--procurement);}
+  .proc-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--procurement);margin-bottom:0.4rem;display:flex;align-items:center;gap:0.6rem;}
+  .regen-pill{background:#fefce8;border:1px solid #fde68a;color:#854d0e;font-size:0.67rem;padding:0.1rem 0.45rem;font-weight:600;}
+  .proc-title{font-family:var(--serif);font-size:1.1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.3rem;}
+  .proc-org{font-size:0.88rem;color:var(--text-muted);margin-bottom:0.55rem;}
+  .proc-desc{font-family:var(--serif-body);font-size:0.92rem;color:var(--text-muted);line-height:1.65;margin-bottom:0.7rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .proc-tags{display:flex;gap:0.5rem;flex-wrap:wrap;}
+  .proc-tag{font-size:0.72rem;font-weight:500;padding:0.18rem 0.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);}
+  .proc-deadline{text-align:right;flex-shrink:0;padding-top:0.1rem;min-width:110px;}
+  .deadline-label{font-size:0.67rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);margin-bottom:0.2rem;}
+  .deadline-date{font-family:var(--serif);font-size:1rem;font-weight:600;color:var(--text);line-height:1.2;margin-bottom:0.3rem;}
+  .deadline-cd{font-size:0.78rem;font-weight:600;padding:0.15rem 0.5rem;display:inline-block;}
+  .deadline-cd.urgent{background:#fef2f2;color:#b91c1c;}
+  .deadline-cd.soon{background:#fffbeb;color:#92400e;}
+  .deadline-cd.ok{background:#f0fdf4;color:#166534;}
+  .deadline-cd.none{color:var(--text-dim);background:none;font-weight:400;font-size:0.75rem;}
 
-  /* Chips */
-  .chip {
-    font-family: var(--sans); font-size: 0.82rem;
-    font-weight: 400; letter-spacing: 0;
-    padding: 0.35rem 0.9rem;
-    border: 1.5px solid var(--border);
-    background: var(--bg); color: var(--text-muted);
-    cursor: pointer; transition: all 0.12s;
-    white-space: nowrap; line-height: 1.5;
-  }
-  .chip:hover { color: var(--text); border-color: var(--text-muted); }
-  .chip.active { background: var(--surface2); color: var(--text); border-color: var(--text-muted); }
+  /* PIPELINE CARDS */
+  .pipe-card{display:grid;grid-template-columns:4px 1fr;gap:0 1.5rem;padding:1.4rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;}
+  .pipe-card:hover{background:var(--surface);}
+  .pipe-stripe{background:var(--pipeline);}
+  .pipe-stripe.london{background:#6a3090;}
+  .pipe-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.3rem;}
+  .pipe-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--pipeline);}
+  .pipe-eyebrow.london{color:#6a3090;}
+  .pipe-stage{font-size:0.7rem;font-weight:600;padding:0.15rem 0.55rem;white-space:nowrap;flex-shrink:0;}
+  .pipe-stage.outline{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+  .pipe-stage.reserved{background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff;}
+  .pipe-stage.full{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
+  .pipe-stage.prior{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}
+  .pipe-stage.unknown{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}
+  .pipe-title{font-family:var(--serif);font-size:1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.2rem;}
+  .pipe-org{font-size:0.85rem;color:var(--text-muted);margin-bottom:0.45rem;}
+  .pipe-desc{font-family:var(--serif-body);font-size:0.9rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.6rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .pipe-meta{display:flex;gap:0.85rem;flex-wrap:wrap;align-items:center;}
+  .scale-badge{font-size:0.75rem;font-weight:600;padding:0.18rem 0.6rem;}
+  .scale-badge.xl{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;}
+  .scale-badge.lg{background:#f0fdf4;color:#166534;border:1px solid #86efac;}
+  .pipe-meta-item{font-size:0.78rem;color:var(--text-dim);}
+  .pipe-meta-item strong{color:var(--text-muted);font-weight:500;}
 
-  /* Source chip active colours */
-  .chip-tender.active     { background: var(--tender-bg);     border-color: var(--tender-border);     color: var(--tender); }
-  .chip-planning.active   { background: var(--planning-bg);   border-color: var(--planning-border);   color: var(--planning); }
-  .chip-brownfield.active { background: var(--brownfield-bg); border-color: var(--brownfield-border); color: var(--brownfield); }
-  .chip-london.active     { background: var(--london-bg);     border-color: var(--london-border);     color: var(--london); }
+  /* LAND CARDS */
+  .land-card{display:grid;grid-template-columns:4px 1fr;gap:0 1.5rem;padding:1.4rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;}
+  .land-card:hover{background:var(--surface);}
+  .land-stripe{background:var(--land);}
+  .land-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.25rem;}
+  .land-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--land);}
+  .land-perm{font-size:0.7rem;font-weight:600;padding:0.15rem 0.55rem;white-space:nowrap;}
+  .land-perm.no{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;}
+  .land-perm.pending{background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
+  .land-perm.yes{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;}
+  .land-address{font-family:var(--serif);font-size:1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.2rem;}
+  .land-lpa{font-size:0.85rem;color:var(--text-muted);margin-bottom:0.4rem;}
+  .land-notes{font-family:var(--serif-body);font-size:0.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.6rem;font-style:italic;}
+  .land-meta{display:flex;gap:1.25rem;flex-wrap:wrap;align-items:flex-end;}
+  .land-stat{display:flex;flex-direction:column;gap:0.05rem;}
+  .land-stat-num{font-family:var(--serif);font-size:1.4rem;font-weight:700;line-height:1;}
+  .land-stat-num.homes{color:var(--land);}
+  .land-stat-num.ha{color:var(--text-muted);font-size:1.1rem;}
+  .land-stat-label{font-size:0.67rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);}
 
-  /* City select */
-  .filter-select {
-    font-family: var(--sans); font-size: 0.82rem;
-    font-weight: 400; padding: 0.35rem 2rem 0.35rem 0.75rem;
-    border: 1.5px solid var(--border); background: var(--bg);
-    color: var(--text-muted); cursor: pointer;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a4540'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.6rem center;
-    background-size: 8px;
-    outline: none; transition: border-color 0.12s;
-    min-width: 150px;
-  }
-  .filter-select:focus { border-color: var(--text); }
+  /* DETAIL PANEL */
+  .detail-overlay{position:fixed;top:0;right:-500px;width:500px;height:100vh;background:var(--bg);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,0.08);z-index:2000;overflow-y:auto;transition:right 0.25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
+  .detail-overlay.open{right:0;}
+  .detail-header{padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;}
+  .detail-close{font-size:0.8rem;font-weight:500;color:var(--text-dim);background:none;border:none;cursor:pointer;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.3rem;letter-spacing:0.02em;}
+  .detail-close:hover{color:var(--text);}
+  .detail-type{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
+  .detail-title{font-family:var(--serif);font-size:1.2rem;font-weight:600;line-height:1.3;color:var(--text);}
+  .detail-body{padding:1.5rem;flex:1;}
+  .detail-field{margin-bottom:0.9rem;}
+  .detail-field-label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);margin-bottom:0.2rem;}
+  .detail-field-value{font-family:var(--serif-body);font-size:0.95rem;line-height:1.7;color:var(--text-muted);}
+  .detail-link{display:inline-block;margin-top:1.25rem;font-size:0.9rem;font-weight:600;color:var(--procurement);text-decoration:none;border-bottom:1.5px solid var(--procurement-border);padding-bottom:0.1rem;}
+  .detail-link:hover{border-color:var(--procurement);}
 
-  /* Search row */
-  .search-wrap {
-    width: 100%; position: relative; display: flex; align-items: center;
+  @media(max-width:700px){
+    .proc-card{grid-template-columns:4px 1fr;}
+    .proc-deadline{display:none;}
+    .detail-overlay{width:100%;right:-100%;}
+    .tabs-bar{overflow-x:auto;}
+    .filter-bar{flex-direction:column;align-items:flex-start;}
+    header{padding:0 1rem;}
+    .logo-sub{display:none;}
   }
-  .search-icon {
-    position: absolute; left: 0.75rem;
-    color: var(--text-dim); font-size: 1rem;
-    pointer-events: none; line-height: 1;
-  }
-  .search-input {
-    flex: 1; padding: 0.8rem 2.5rem 0.8rem 2.6rem;
-    background: var(--bg); border: 1.5px solid var(--border);
-    color: var(--text); font-family: var(--sans);
-    font-size: 1rem; font-weight: 400; outline: none;
-    transition: border-color 0.15s;
-    border-radius: 0;
-  }
-  .search-input:focus { border-color: var(--text); box-shadow: 0 0 0 3px rgba(28,26,24,0.07); }
-  .search-input::placeholder { color: var(--text-dim); font-size: 0.9rem; }
-  .search-clear {
-    position: absolute; right: 0.6rem;
-    background: none; border: none; cursor: pointer;
-    color: var(--text-dim); font-size: 0.7rem; padding: 0.2rem;
-    display: none; line-height: 1;
-  }
-  .search-clear:hover { color: var(--text); }
-  .search-clear.visible { display: block; }
-
-  /* Clear all */
-  .clear-all-btn {
-    font-family: var(--mono); font-size: 0.57rem;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 0.28rem 0.7rem;
-    border: 1px solid var(--border); background: none;
-    color: var(--text-dim); cursor: pointer;
-    transition: all 0.12s;
-  }
-  .clear-all-btn:hover { color: var(--tender); border-color: var(--tender-border); }
-
-  /* ── LAYOUT ── */
-  .body-layout {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    min-height: calc(100vh - 52px - 260px);
-  }
-  .main-col { border-right: 1px solid var(--border); }
-
-  /* ── MAP — full width top strip ── */
-  #map {
-    height: 380px;
-    background: #e8e4de;
-    border-bottom: 1px solid var(--border);
-    width: 100%;
-  }
-
-  /* ── RESULTS HEADER ── */
-  .results-header {
-    padding: 0.7rem 2rem;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    justify-content: space-between;
-    background: var(--surface);
-    gap: 1rem;
-  }
-  .results-title {
-    font-family: var(--sans); font-size: 0.95rem;
-    font-weight: 500; color: var(--text);
-    flex-shrink: 0;
-  }
-  .results-header-right {
-    display: flex; align-items: center; gap: 1rem;
-  }
-  .results-count {
-    font-family: var(--sans); font-size: 0.82rem;
-    color: var(--text-muted); white-space: nowrap;
-  }
-  .sort-select {
-    font-family: var(--mono); font-size: 0.58rem;
-    letter-spacing: 0.03em; padding: 0.25rem 1.6rem 0.25rem 0.6rem;
-    border: 1px solid var(--border); background: var(--bg);
-    color: var(--text-muted); cursor: pointer;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a09890'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.5rem center;
-    background-size: 7px;
-    outline: none;
-  }
-  .sort-select:focus { border-color: var(--text-dim); }
-
-  /* ── LOADING ── */
-  .loading-state {
-    padding: 3.5rem 2rem; text-align: center;
-  }
-  .loading-label {
-    font-family: var(--mono); font-size: 0.62rem;
-    color: var(--text-dim); letter-spacing: 0.08em;
-    text-transform: uppercase; margin-bottom: 1.5rem;
-  }
-  .loading-track {
-    width: 180px; height: 1px;
-    background: var(--border); margin: 0 auto; overflow: hidden;
-  }
-  .loading-fill {
-    height: 100%; background: var(--tender);
-    animation: loadSlide 1.6s ease-in-out infinite; width: 40%;
-  }
-  @keyframes loadSlide { 0%{transform:translateX(-300%)} 100%{transform:translateX(500%)} }
-
-  /* ── CARDS ── */
-  .card-list { display: flex; flex-direction: column; }
-  .card {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--border-dim);
-    cursor: pointer; transition: background 0.1s;
-    display: grid;
-    grid-template-columns: 3px 1fr;
-    gap: 0 1.25rem;
-  }
-  .card:hover { background: var(--surface); }
-  .card-stripe { width: 3px; border-radius: 1px; align-self: stretch; }
-
-  .card-stripe.tender     { background: var(--tender); }
-  .card-stripe.planning   { background: var(--planning); }
-  .card-stripe.brownfield { background: var(--brownfield); }
-  .card-stripe.london     { background: var(--london); }
-
-  .card-eyebrow {
-    font-family: var(--mono); font-size: 0.68rem;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    margin-bottom: 0.45rem;
-    display: flex; align-items: center; gap: 0.6rem;
-  }
-  .card-eyebrow.tender     { color: var(--tender); }
-  .card-eyebrow.planning   { color: var(--planning); }
-  .card-eyebrow.brownfield { color: var(--brownfield); }
-  .card-eyebrow.london   { color: var(--london); }
-
-  .regen-flag {
-    font-family: var(--mono); font-size: 0.5rem;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--gold); border: 1px solid #362a10;
-    padding: 0.1rem 0.35rem; vertical-align: middle;
-  }
-
-  .card-title {
-    font-family: var(--serif); font-size: 1.1rem;
-    font-weight: 400; line-height: 1.35;
-    color: var(--text); margin-bottom: 0.2rem;
-    letter-spacing: -0.01em;
-  }
-  .card-org {
-    font-size: 0.85rem; color: var(--text-muted);
-    font-weight: 400; margin-bottom: 0.45rem;
-  }
-  .card-desc {
-    font-size: 0.9rem; color: var(--text-muted);
-    font-weight: 300; line-height: 1.6;
-    margin-bottom: 0.6rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .card-meta {
-    display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center;
-  }
-  .meta-item {
-    font-family: var(--mono); font-size: 0.72rem;
-    color: var(--text-muted); letter-spacing: 0.02em;
-    display: flex; align-items: center; gap: 0.3rem;
-  }
-  .meta-item strong { color: var(--text); font-weight: 500; }
-  .scale-badge {
-    font-family: var(--mono); font-size: 0.55rem;
-    letter-spacing: 0.04em; padding: 0.15rem 0.5rem;
-    border-radius: 1px; font-weight: 400;
-    background: var(--surface2); color: var(--text-muted);
-    border: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  .scale-badge.large { background: var(--planning-bg); color: var(--planning); border-color: var(--planning-border); }
-  .scale-badge.xl    { background: #f0f4fb; color: #1040a0; border-color: #90b8e0; font-weight: 500; }
-
-  /* ── EMPTY / ERROR ── */
-  .empty-state {
-    padding: 3.5rem 2rem; text-align: center;
-    font-family: var(--mono); font-size: 0.68rem;
-    color: var(--text-dim); letter-spacing: 0.04em;
-    line-height: 2;
-  }
-  .error-bar {
-    margin: 0.5rem 2rem;
-    padding: 0.65rem 0.9rem;
-    border: 1px solid var(--tender-border);
-    background: var(--tender-bg);
-    border-left: 2px solid var(--tender);
-    font-size: 0.75rem; color: #c06050;
-  }
-  .error-bar strong {
-    color: var(--tender); display: block;
-    margin-bottom: 0.15rem; font-size: 0.6rem;
-    font-family: var(--mono); text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  /* ── SIDEBAR ── */
-  .sidebar { padding: 0; }
-  .sidebar-section {
-    padding: 1.35rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .sidebar-heading {
-    font-family: var(--mono); font-size: 0.57rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-dim);
-  }
-  .city-list { list-style: none; }
-  .city-item {
-    display: flex; justify-content: space-between;
-    align-items: center; padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-dim);
-    cursor: pointer; font-size: 0.9rem; font-weight: 400;
-    color: var(--text-muted); transition: color 0.1s;
-    gap: 0.5rem;
-  }
-  .city-item:hover { color: var(--text); }
-  .city-item.active { color: var(--text); }
-  .city-item:last-child { border-bottom: none; }
-  .city-name { flex-shrink: 0; min-width: 80px; }
-  .city-bar-wrap {
-    flex: 1; position: relative;
-  }
-  .city-bar {
-    height: 1px; background: var(--border); width: 100%; position: relative;
-  }
-  .city-bar-fill {
-    position: absolute; left: 0; top: 0;
-    height: 100%; background: var(--text-dim);
-    transition: width 0.5s ease;
-  }
-  .city-count {
-    font-family: var(--mono); font-size: 0.58rem;
-    color: var(--text-dim); flex-shrink: 0;
-  }
-
-  .source-item {
-    margin-bottom: 0.9rem; padding-bottom: 0.9rem;
-    border-bottom: 1px solid var(--border-dim);
-    font-size: 0.75rem; font-weight: 300;
-    color: var(--text-muted); line-height: 1.65;
-  }
-  .source-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .source-type {
-    font-family: var(--mono); font-size: 0.55rem;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    margin-bottom: 0.3rem;
-  }
-
-  /* ── DETAIL PANEL ── */
-  .detail-overlay {
-    display: none; position: fixed;
-    top: 0; right: 0; bottom: 0;
-    width: 500px; background: var(--surface);
-    border-left: 1px solid var(--border);
-    z-index: 2000; overflow-y: auto;
-    box-shadow: -24px 0 48px rgba(0,0,0,0.7);
-  }
-  .detail-overlay.open { display: block; }
-  .detail-header {
-    padding: 1.4rem 1.75rem;
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0;
-    background: var(--surface); z-index: 10;
-  }
-  .detail-close {
-    position: absolute; top: 1.1rem; right: 1.4rem;
-    background: none; border: none;
-    color: var(--text-dim); cursor: pointer;
-    font-family: var(--mono); font-size: 0.58rem;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border);
-    transition: all 0.12s;
-  }
-  .detail-close:hover { color: var(--text); border-color: var(--text-dim); }
-  .detail-type {
-    font-family: var(--mono); font-size: 0.57rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    margin-bottom: 0.7rem;
-  }
-  .detail-title {
-    font-family: var(--serif); font-size: 1.4rem;
-    font-weight: 400; line-height: 1.3;
-    letter-spacing: -0.01em; color: var(--text);
-    padding-right: 3.5rem;
-  }
-  .detail-body { padding: 1.4rem 1.75rem; }
-  .detail-section {
-    margin-bottom: 1.4rem; padding-bottom: 1.4rem;
-    border-bottom: 1px solid var(--border-dim);
-  }
-  .detail-section:last-child { border-bottom: none; margin-bottom: 0; }
-  .detail-field { margin-bottom: 0.8rem; }
-  .detail-field-label {
-    font-family: var(--mono); font-size: 0.55rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-dim); margin-bottom: 0.2rem;
-  }
-  .detail-field-value {
-    font-size: 0.92rem; line-height: 1.7;
-    color: var(--text-muted); font-weight: 400;
-  }
-  .detail-link {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    font-family: var(--mono); font-size: 0.62rem;
-    text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--tender); text-decoration: none;
-    border: 1px solid var(--tender-border);
-    padding: 0.5rem 1rem; margin-top: 0.5rem;
-    transition: all 0.12s;
-  }
-  .detail-link:hover { background: var(--tender); color: #fff; border-color: var(--tender); }
-
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 900px) {
-    .body-layout { grid-template-columns: 1fr; }
-    .sidebar { border-top: 1px solid var(--border); }
-    .summary-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-    .detail-overlay { width: 100%; }
-  }
-
-  /* ── LEAFLET DARK POPUP ── */
-  .dark-popup .leaflet-popup-content-wrapper {
-    background: #ffffff; border: 1px solid #e2ddd6;
-    border-radius: 0; color: #1a1816;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.7);
-  }
-  .dark-popup .leaflet-popup-tip { background: #e2ddd6; }
-  .leaflet-popup-content { margin: 10px 14px; font-size: 0.82rem; line-height: 1.5; }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-mark"></div>
     The Developer Intelligence
-    <span class="logo-sub">— UK Regeneration Pipeline</span>
+    <span class="logo-divider"> | </span>
+    <span class="logo-sub">UK Regeneration Pipeline</span>
   </div>
   <div class="header-right">
-    <div class="live-badge">
-      <div class="live-dot"></div>
-      Live feed
-    </div>
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
     <div class="header-date" id="header-date"></div>
   </div>
 </header>
 
-<!-- SUMMARY BAR -->
-<div class="summary-bar">
-  <div class="summary-intro">
-    Major development opportunities across England — market engagement, planning applications and brownfield land, 50+ homes.
-  </div>
-  <div class="summary-counts">
-    <span class="summary-count tender"><span id="stat-tender">—</span> Procurement</span>
-    <span class="summary-count planning"><span id="stat-planning">—</span> Planning</span>
-    <span class="summary-count brownfield"><span id="stat-brownfield">—</span> Brownfield</span>
-    <span class="summary-count london"><span id="stat-london">—</span> London</span>
-  </div>
-</div>
-
-<!-- MAP — full width, top of page -->
 <div id="map"></div>
 
-<!-- FILTER PANEL -->
-<div class="filter-panel">
-
-  <div class="filter-row filter-row-search">
-    <div class="search-wrap">
-      <span class="search-icon">⌕</span>
-      <input type="text" class="search-input" id="search-input"
-        placeholder="Search by location, scheme type, authority or keyword — e.g. 'Southwark', 'masterplan', 'brownfield'…"
-        oninput="handleSearch()" autocomplete="off" spellcheck="false">
-      <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">✕</button>
-    </div>
-  </div>
-
-  <div class="filter-row">
-
-    <div class="filter-block">
-      <div class="filter-block-label">Source</div>
-      <div class="filter-chips" id="type-filters">
-        <button class="chip chip-tender active"      data-filter="tender"      onclick="toggleFilter('tender')">Procurement</button>
-        <button class="chip chip-planning active"    data-filter="planning"    onclick="toggleFilter('planning')">Planning</button>
-        <button class="chip chip-brownfield active"  data-filter="brownfield"  onclick="toggleFilter('brownfield')">Brownfield</button>
-        <button class="chip chip-london active"      data-filter="london"      onclick="toggleFilter('london')">London</button>
-      </div>
-    </div>
-
-    <div class="filter-divider"></div>
-
-    <div class="filter-block">
-      <div class="filter-block-label">City / Region</div>
-      <div class="filter-chips">
-        <select class="filter-select" id="city-select" onchange="filterCity(this.value)">
-          <option value="all">All locations</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="filter-divider"></div>
-
-    <div class="filter-block">
-      <div class="filter-block-label">Status</div>
-      <div class="filter-chips" id="status-filters">
-        <button class="chip active" data-status="all"       onclick="filterStatus('all')">Any</button>
-        <button class="chip"        data-status="undecided" onclick="filterStatus('undecided')">Live / undecided</button>
-        <button class="chip"        data-status="approved"  onclick="filterStatus('approved')">Approved</button>
-      </div>
-    </div>
-
-    <div class="filter-divider"></div>
-
-    <div class="filter-block">
-      <div class="filter-block-label">Flag</div>
-      <div class="filter-chips">
-        <button class="chip" id="regen-toggle" onclick="toggleRegen()">Regen flagged</button>
-      </div>
-    </div>
-
-    <div class="filter-block filter-block-right">
-      <button class="clear-all-btn" onclick="clearAllFilters()">Clear all</button>
-    </div>
-
-  </div>
+<div class="tabs-bar">
+  <button class="tab-btn tab-procurement active" onclick="switchTab('procurement')">
+    Procurement Notices <span class="tab-count" id="cnt-procurement">—</span>
+  </button>
+  <button class="tab-btn tab-pipeline" onclick="switchTab('pipeline')">
+    Planning Pipeline <span class="tab-count" id="cnt-pipeline">—</span>
+  </button>
+  <button class="tab-btn tab-land" onclick="switchTab('land')">
+    Brownfield Land <span class="tab-count" id="cnt-land">—</span>
+  </button>
 </div>
 
-<!-- BODY -->
-<div class="body-layout">
-  <div class="main-col">
-    <div class="results-header">
-      <div class="results-title">Pipeline Projects</div>
-      <div class="results-header-right">
-        <select class="sort-select" id="sort-select" onchange="handleSort()">
-          <option value="default">Most recent</option>
-          <option value="scale">Largest scale</option>
-          <option value="regen">Regen flagged first</option>
-          <option value="type">By type</option>
-        </select>
-        <div class="results-count" id="results-count">Loading…</div>
-      </div>
-    </div>
-
-    <div id="error-container"></div>
-
-    <div id="results-container">
-      <div class="loading-state">
-        <div class="loading-label">Fetching live data — Find a Tender · PlanIt · Planning Data</div>
-        <div class="loading-track"><div class="loading-fill"></div></div>
-      </div>
-    </div>
-
-
+<div class="filter-bar">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" class="search-input" id="search-input"
+      placeholder="Search location, authority, keyword…"
+      oninput="handleSearch()" autocomplete="off" spellcheck="false">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
   </div>
-
-  <div class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-heading">Activity by City</div>
-      <ul class="city-list" id="city-breakdown"></ul>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-heading">About</div>
-      <p style="font-size:0.75rem;line-height:1.75;color:var(--text-muted);font-weight:300;margin-bottom:0.8rem;">
-        Surfacing opportunities at the <strong style="color:var(--text);font-weight:400;">earliest public stage</strong> —
-        before consultant teams are appointed. Projects flagged
-        <span style="color:var(--gold);font-family:var(--mono);font-size:0.55rem;border:1px solid #c8a850;padding:0.1rem 0.3rem;">REGEN</span>
-        match our keyword taxonomy for place and regeneration relevance.
-      </p>
-      <p style="font-size:0.75rem;line-height:1.6;color:var(--text-muted);font-weight:300;">
-        A <a href="https://www.festivalofplace.co.uk" target="_blank" rel="noopener" style="color:var(--tender);text-decoration:none;border-bottom:1px solid var(--tender-border);">Festival of Place</a> initiative.
-      </p>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-heading" style="cursor:pointer;user-select:none;" onclick="this.parentElement.classList.toggle('sources-open')">
-        Data Sources <span style="float:right;font-size:0.7rem;opacity:0.5;">▸</span>
-      </div>
-      <div class="sources-body" style="display:none;">
-        <div class="source-item">
-          <div class="source-type" style="color:var(--tender);">● Procurement</div>
-          Find a Tender (FaTS) — UK Preliminary Market Engagement notices, filtered to place-relevant keywords.
-        </div>
-        <div class="source-item">
-          <div class="source-type" style="color:var(--planning);">● Planning</div>
-          PlanIt.org.uk — large-scale applications, last 60 days.
-        </div>
-        <div class="source-item">
-          <div class="source-type" style="color:var(--brownfield);">● Brownfield</div>
-          planning.data.gov.uk — England's active brownfield land register.
-        </div>
-        <div class="source-item">
-          <div class="source-type" style="color:var(--london);">● London</div>
-          Planning London Datahub — all 33 boroughs, updated daily.
-        </div>
-      </div>
-    </div>
+  <div class="filter-group">
+    <span class="filter-label">Region</span>
+    <select class="filter-select" id="region-select" onchange="regionFilter=this.value;renderCurrentTab()">
+      <option value="all">All regions</option>
+    </select>
   </div>
+  <div class="filter-group" id="scale-group">
+    <span class="filter-label">Scale</span>
+    <button class="chip active" data-scale="all"  onclick="setScale('all')">Any</button>
+    <button class="chip"        data-scale="50"   onclick="setScale('50')">50–199</button>
+    <button class="chip"        data-scale="200"  onclick="setScale('200')">200–499</button>
+    <button class="chip"        data-scale="500"  onclick="setScale('500')">500+</button>
+  </div>
+  <div class="results-meta" id="results-meta"></div>
 </div>
 
-<!-- DETAIL PANEL -->
+<div id="panel-procurement" class="tab-panel active">
+  <div class="loading-state"><div class="loading-label">Loading procurement notices…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
+</div>
+<div id="panel-pipeline" class="tab-panel">
+  <div class="loading-state"><div class="loading-label">Loading planning pipeline…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
+</div>
+<div id="panel-land" class="tab-panel">
+  <div class="loading-state"><div class="loading-label">Loading brownfield land register…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
+</div>
+
 <div class="detail-overlay" id="detail-panel">
   <div class="detail-header">
-    <button class="detail-close" onclick="closeDetail()">Close ✕</button>
+    <button class="detail-close" onclick="closeDetail()">← Back</button>
     <div id="detail-type" class="detail-type"></div>
     <div id="detail-title" class="detail-title"></div>
   </div>
@@ -733,719 +240,461 @@
 </div>
 
 <script>
-// ── STATE
-let allItems = [];
-let filteredItems = [];
-let activeFilters = { tender: true, planning: true, brownfield: true, london: true };
-let activeCity = 'all';
-let activeStatus = 'all';   // all | undecided | approved
-let regenOnly = false;
-let residentialOnly = false;
-let searchTerm = '';
+// STATE
+let allProcurement=[], allPipeline=[], allLand=[];
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all';
 let map, markerLayer;
 
-// Date
-document.getElementById('header-date').textContent =
-  new Date().toLocaleDateString('en-GB', {
-    weekday:'short', day:'numeric', month:'short', year:'numeric'
-  }).toUpperCase();
-
-// ── REGEN KEYWORDS
-const REGEN_KEYWORDS = [
-  'regeneration','masterplan','master plan','mixed use','mixed-use',
-  'town centre','brownfield','placemaking','place-making','urban renewal',
-  'estate regeneration','high street','waterfront','cultural quarter',
-  'innovation district','garden city','new town','opportunity area',
-  'growth area','city centre','strategic development','housing zone',
-  'urban extension','retrofit','meanwhile use','community land trust',
-  'build to rent','build-to-rent','purpose-built','urban village',
-  'heritage quarter','science park','knowledge quarter','enterprise zone',
-  'freeport','development corporation','town deal','future high streets',
-  'levelling up','compulsory purchase','land assembly','co-living',
-];
-
-// UK cities for geo-matching
-const CITY_COORDS = {
-  'London':       {lat:51.5074, lng:-0.1278},
-  'Manchester':   {lat:53.4808, lng:-2.2426},
-  'Birmingham':   {lat:52.4862, lng:-1.8904},
-  'Liverpool':    {lat:53.4084, lng:-2.9916},
-  'Leeds':        {lat:53.8008, lng:-1.5491},
-  'Bristol':      {lat:51.4545, lng:-2.5879},
-  'Newcastle':    {lat:54.9783, lng:-1.6174},
-  'Sheffield':    {lat:53.3811, lng:-1.4701},
-  'Nottingham':   {lat:52.9548, lng:-1.1581},
-  'Leicester':    {lat:52.6369, lng:-1.1398},
-  'Southampton':  {lat:50.9097, lng:-1.4044},
-  'Plymouth':     {lat:50.3755, lng:-4.1427},
-  'Coventry':     {lat:52.4068, lng:-1.5197},
-  'Bradford':     {lat:53.7960, lng:-1.7594},
-  'Wolverhampton':{lat:52.5862, lng:-2.1270},
-  'Oxford':       {lat:51.7520, lng:-1.2577},
-  'Cambridge':    {lat:52.2053, lng:0.1218},
-  'Norwich':      {lat:52.6309, lng:1.2974},
-  'Reading':      {lat:51.4543, lng:-0.9781},
-  'Exeter':       {lat:50.7184, lng:-3.5339},
-  'Milton Keynes':{lat:52.0406, lng:-0.7594},
-  'Northampton':  {lat:52.2405, lng:-0.9027},
-  'Peterborough': {lat:52.5695, lng:-0.2405},
-  'Derby':        {lat:52.9225, lng:-1.4746},
-  'Stoke':        {lat:53.0027, lng:-2.1794},
-  'Swindon':      {lat:51.5558, lng:-1.7797},
-  'Luton':        {lat:51.8787, lng:-0.4200},
-  'Gloucester':   {lat:51.8642, lng:-2.2382},
+const CITY_COORDS={
+  'London':{lat:51.5074,lng:-0.1278},'Manchester':{lat:53.4808,lng:-2.2426},
+  'Birmingham':{lat:52.4862,lng:-1.8904},'Leeds':{lat:53.8008,lng:-1.5491},
+  'Bristol':{lat:51.4545,lng:-2.5879},'Liverpool':{lat:53.4084,lng:-2.9916},
+  'Sheffield':{lat:53.3811,lng:-1.4701},'Newcastle':{lat:54.9783,lng:-1.6178},
+  'Nottingham':{lat:52.9548,lng:-1.1581},'Southampton':{lat:50.9097,lng:-1.4044},
+  'Leicester':{lat:52.6369,lng:-1.1398},'Coventry':{lat:52.4068,lng:-1.5197},
+  'Bradford':{lat:53.7960,lng:-1.7594},'Portsmouth':{lat:50.8198,lng:-1.0880},
+  'Brighton':{lat:50.8225,lng:-0.1372},'Reading':{lat:51.4543,lng:-0.9781},
+  'Derby':{lat:52.9225,lng:-1.4746},'Stoke':{lat:53.0027,lng:-2.1794},
+  'Exeter':{lat:50.7184,lng:-3.5339},'Oxford':{lat:51.7520,lng:-1.2577},
+  'Cambridge':{lat:52.2053,lng:0.1218},'York':{lat:53.9600,lng:-1.0873},
+  'Hull':{lat:53.7457,lng:-0.3367},'Peterborough':{lat:52.5695,lng:-0.2405},
 };
 
-// ── MAP
-function initMap() {
-  map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).setView([52.5, -1.5], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO',
-    subdomains: 'abcd', maxZoom: 19
+const REGION_KEYWORDS={
+  'London':['london','camden','hackney','southwark','lambeth','islington','tower hamlets','newham','lewisham','greenwich','wandsworth','hammersmith','kensington','westminster','barnet','haringey','brent','ealing','hounslow','richmond','kingston','merton','sutton','croydon','bromley','bexley','havering','barking','redbridge','waltham forest','enfield','harrow','hillingdon','city of london'],
+  'South East':['brighton','southampton','reading','oxford','portsmouth','kent','surrey','essex','hampshire','berkshire','buckinghamshire','oxfordshire','east sussex','west sussex','guildford','maidstone','basingstoke'],
+  'South West':['bristol','exeter','plymouth','cornwall','devon','dorset','somerset','gloucestershire','wiltshire','bath','swindon','cheltenham'],
+  'Midlands':['birmingham','coventry','leicester','nottingham','derby','wolverhampton','stoke','northampton','worcester','hereford','lincoln','shrewsbury'],
+  'North West':['manchester','liverpool','blackpool','bolton','salford','stockport','wigan','oldham','rochdale','cheshire','lancashire','cumbria','warrington','preston','chester'],
+  'Yorkshire':['leeds','sheffield','bradford','hull','york','doncaster','rotherham','barnsley','huddersfield','wakefield','harrogate'],
+  'North East':['newcastle','sunderland','middlesbrough','gateshead','durham','hartlepool','stockton','darlington'],
+  'East of England':['cambridge','norwich','peterborough','ipswich','colchester','luton','hertford','bedford','chelmsford','stevenage'],
+};
+
+const REGEN_KEYWORDS=['regeneration','masterplan','master plan','mixed use','mixed-use','town centre','brownfield','placemaking','urban renewal','estate regeneration','high street','waterfront','cultural quarter','innovation district','city centre','strategic development','build to rent','heritage','science park','enterprise zone','development corporation','town deal','levelling up','affordable housing','housing development','outline planning','reserved matters','design team','architect','landscape architect','urban design','feasibility','development framework','public realm','co-living','compulsory purchase'];
+
+function detectRegion(item){
+  const text=`${item.location||''} ${item.org||''} ${item.city||''}`.toLowerCase();
+  for(const[r,kws]of Object.entries(REGION_KEYWORDS)){if(kws.some(k=>text.includes(k)))return r;}
+  return 'Other';
+}
+
+function detectStage(text){
+  const t=(text||'').toLowerCase();
+  if(t.includes('reserved matters'))return{label:'Reserved Matters',cls:'reserved'};
+  if(t.includes('outline'))return{label:'Outline',cls:'outline'};
+  if(t.includes('prior approval')||t.includes('permitted development'))return{label:'Prior Approval',cls:'prior'};
+  if(t.includes('full planning')||t.includes('full application')||/\/ful|_ful/i.test(t))return{label:'Full Permission',cls:'full'};
+  return{label:'Application',cls:'unknown'};
+}
+
+function daysUntil(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return null;return Math.ceil((d-Date.now())/86400000);}
+function fmtDate(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return ds;return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+
+function deadlineBadge(days){
+  if(days===null)return'<span class="deadline-cd none">No deadline set</span>';
+  if(days<0)return'<span class="deadline-cd urgent">Closed</span>';
+  if(days<=7)return`<span class="deadline-cd urgent">${days} days left</span>`;
+  if(days<=21)return`<span class="deadline-cd soon">${days} days left</span>`;
+  return`<span class="deadline-cd ok">${days} days left</span>`;
+}
+
+// Header date
+document.getElementById('header-date').textContent=
+  new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}).toUpperCase();
+
+// MAP
+function initMap(){
+  map=L.map('map',{zoomControl:true,scrollWheelZoom:false}).setView([52.5,-1.5],6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
   }).addTo(map);
-  markerLayer = L.featureGroup().addTo(map);
-  setTimeout(() => map.invalidateSize(), 300);
+  markerLayer=L.featureGroup().addTo(map);
+  setTimeout(()=>map.invalidateSize(),400);
 }
 
-function updateMarkers() {
+function updateMarkers(items){
+  if(!markerLayer)return;
   markerLayer.clearLayers();
-  const colors = { tender: '#c73e28', planning: '#2563a8', brownfield: '#258050', london: '#7b3fa0' };
-
-  filteredItems.forEach(item => {
-    if (!item.lat || !item.lng || isNaN(item.lat) || isNaN(item.lng)) return;
-    const color = colors[item.type];
-    const icon = L.divIcon({
-      html: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:pointer;"></div>`,
-      className: '', iconSize: [11,11], iconAnchor: [5,5]
+  const colors={procurement:'#8b1a0a',pipeline:'#1a4e90',london:'#6a3090',land:'#1a6038'};
+  items.forEach(item=>{
+    if(!item.lat||!item.lng||isNaN(item.lat)||isNaN(item.lng))return;
+    const color=colors[item._tab]||'#666';
+    const icon=L.divIcon({
+      html:`<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.25);cursor:pointer;"></div>`,
+      className:'',iconSize:[10,10],iconAnchor:[5,5]
     });
-    L.marker([item.lat, item.lng], { icon })
-      .addTo(markerLayer)
-      .bindPopup(
-        `<div style="font-family:'Instrument Serif',serif;">${escHtml(item.title)}</div>` +
-        `<div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:#787490;margin-top:4px;">${escHtml(item.org || item.location || '')}</div>`,
-        { className: 'dark-popup' }
-      )
-      .on('click', () => showDetail(item.id));
+    L.marker([item.lat,item.lng],{icon}).addTo(markerLayer)
+      .bindPopup(`<strong style="font-family:serif;">${escHtml(item.title.substring(0,80))}</strong><br><span style="font-size:0.75rem;color:#666;">${escHtml(item.org||item.location||'')}</span>`,{maxWidth:240})
+      .on('click',()=>showDetail(item.id));
   });
-
-  // Only auto-fit on initial load (when map is at UK overview zoom)
-  if (markerLayer.getLayers().length > 0 && map.getZoom() <= 7) {
-    try {
-      const bounds = markerLayer.getBounds();
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.1), { maxZoom: 8 });
-    } catch(e) {}
+  if(markerLayer.getLayers().length>0&&map.getZoom()<=7){
+    try{const b=markerLayer.getBounds();if(b.isValid())map.fitBounds(b.pad(0.1),{maxZoom:8});}catch(e){}
   }
 }
 
-// ── FETCH: TENDERS
-async function fetchTenders() {
-  try {
-    const res = await fetch('/api/tenders');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const releases = data.releases || [];
-    const items = [];
+// TABS
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.tab-${tab}`).classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  renderCurrentTab();
+}
 
-    for (const release of releases) {
-      const tender = release.tender || {};
-      const title = tender.title || '';
-      const description = tender.description || '';
-      const fullText = `${title} ${description}`.toLowerCase();
-
-      const isRegen = REGEN_KEYWORDS.some(kw => fullText.includes(kw));
-      if (!isRegen) continue;
-
-      const buyer = (release.parties || []).find(p => (p.roles || []).includes('buyer'));
-      const buyerName = buyer?.name || '';
-      const buyerLocality = buyer?.address?.locality || buyer?.address?.region || '';
-      const region = (tender.items || []).flatMap(i => i.deliveryAddresses || [])[0]?.region || '';
-
-      const locationStr = `${buyerLocality} ${region} ${buyerName}`.toLowerCase();
-      let lat = null, lng = null, matchedCity = null;
-      for (const [city, coords] of Object.entries(CITY_COORDS)) {
-        if (locationStr.includes(city.toLowerCase())) {
-          lat = coords.lat + (Math.random() - 0.5) * 0.04;
-          lng = coords.lng + (Math.random() - 0.5) * 0.04;
-          matchedCity = city; break;
-        }
-      }
-
-      const deadline = tender.submissionTerms?.bidDeadline || tender.communication?.futureNoticeDate;
-      const value = tender.value?.amount;
-
-      items.push({
-        id: 't_' + (release.id || Math.random().toString(36).substr(2,8)),
-        type: 'tender',
-        title: title || 'Untitled Notice',
-        org: buyerName || 'Unknown authority',
-        location: buyerLocality || region || '',
-        description,
-        deadline: deadline ? new Date(deadline).toLocaleDateString('en-GB') : null,
-        value: value ? `£${(value/1e6).toFixed(1)}m` : null,
-        published: release.date ? new Date(release.date).toLocaleDateString('en-GB') : null,
-        url: `https://www.find-tender.service.gov.uk/Notice/${release.id}`,
-        lat, lng, city: matchedCity, isRegen: true,
-      });
+// FILTER
+function getItems(){
+  const src=currentTab==='procurement'?allProcurement:currentTab==='pipeline'?allPipeline:allLand;
+  return src.filter(item=>{
+    if(searchTerm){
+      const hay=`${item.title} ${item.org} ${item.location} ${item.description} ${item.region||''}`.toLowerCase();
+      if(!hay.includes(searchTerm))return false;
     }
-    return items;
-  } catch(e) {
-    console.error('Tender fetch:', e);
-    showError('Find a Tender', e.message);
-    return [];
-  }
-}
-
-// ── FETCH: PLANIT
-async function fetchPlanning() {
-  try {
-    const res = await fetch('/api/planning');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const items = [];
-
-    // All records come back in one England-wide batch.
-    // area_name on each record tells us the authority/city.
-    const records = (data.cities || []).flatMap(c => c.records || []);
-
-    for (const app of records) {
-      const title = app.description || app.app_type || 'Planning Application';
-      const desc = (app.description || '').toLowerCase();
-      const isRegen = REGEN_KEYWORDS.some(kw => desc.includes(kw));
-
-      // PlanIt JSON: coordinates come as location_x (lng) / location_y (lat)
-      let lat = parseFloat(app.location_y);
-      let lng = parseFloat(app.location_x);
-
-      // GeoJSON location field fallback: { type:"Point", coordinates:[lng,lat] }
-      if ((isNaN(lat) || isNaN(lng)) && app.location?.coordinates) {
-        const c = app.location.coordinates;
-        if (Array.isArray(c) && c.length === 2) { lng = c[0]; lat = c[1]; }
-      }
-
-      // Match to a known city from area_name or address for display/filtering
-      const authorityStr = (app.area_name || app.address || '').toLowerCase();
-      let matchedCity = null;
-      for (const city of Object.keys(CITY_COORDS)) {
-        if (authorityStr.includes(city.toLowerCase())) { matchedCity = city; break; }
-      }
-
-      // Fallback geo: jitter around matched city centre
-      if ((isNaN(lat) || isNaN(lng)) && matchedCity) {
-        const cc = CITY_COORDS[matchedCity];
-        lat = cc.lat + (Math.random() - 0.5) * 0.06;
-        lng = cc.lng + (Math.random() - 0.5) * 0.08;
-      }
-
-      // Extract dwelling count hint from description
-      const dwellingMatch = (app.description || '').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
-      const estimatedUnits = dwellingMatch ? parseInt(dwellingMatch[1]) : null;
-
-      // Skip if we can confidently identify it's under 50 homes
-      if (estimatedUnits !== null && estimatedUnits < 50) continue;
-
-      items.push({
-        id: 'p_' + (app.uid || app.name || Math.random().toString(36).substr(2,8)),
-        type: 'planning',
-        title,
-        org: app.area_name || '',
-        location: app.address || '',
-        description: app.description || '',
-        status: app.app_state || '',
-        reference: app.uid || app.name || '',
-        published: app.start_date || '',
-        units: estimatedUnits ? String(estimatedUnits) : null,
-        url: app.link ? `https://www.planit.org.uk${app.link}` : app.url || '',
-        lat: isNaN(lat) ? null : lat,
-        lng: isNaN(lng) ? null : lng,
-        city: matchedCity,
-        isRegen,
-      });
-    }
-    return items;
-  } catch(e) {
-    console.error('Planning fetch:', e);
-    showError('PlanIt Planning API', e.message);
-    return [];
-  }
-}
-
-// ── FETCH: BROWNFIELD
-async function fetchBrownfield() {
-  try {
-    const res = await fetch('/api/brownfield');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const items = [];
-
-    for (const entity of (data.entities || [])) {
-      let lat = parseFloat(entity.latitude);
-      let lng = parseFloat(entity.longitude);
-
-      if ((isNaN(lat) || isNaN(lng)) && entity.point) {
-        // WKT POINT(lng lat)
-        const wkt = entity.point.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-        if (wkt) { lng = parseFloat(wkt[1]); lat = parseFloat(wkt[2]); }
-      }
-
-      const locationStr = (entity['site-address'] || entity.address || '').toLowerCase();
-      let matchedCity = null;
-      for (const city of Object.keys(CITY_COORDS)) {
-        if (locationStr.includes(city.toLowerCase())) { matchedCity = city; break; }
-      }
-
-      items.push({
-        id: 'b_' + (entity.reference || String(entity.entity || Math.random())),
-        type: 'brownfield',
-        title: entity['site-name'] || entity.name || entity.reference || 'Brownfield Site',
-        org: entity['local-authority'] || entity.organisation || '',
-        location: entity['site-address'] || entity.address || '',
-        description: entity.notes || '',
-        hectares: entity['site-hectares'] || entity.hectares || null,
-        units: entity['minimum-net-dwellings'] || null,
-        status: entity['planning-permission-status'] || '',
-        url: entity['planning-permission-url'] || `https://www.planning.data.gov.uk/entity/${entity.entity}`,
-        lat: isNaN(lat) ? null : lat,
-        lng: isNaN(lng) ? null : lng,
-        city: matchedCity,
-        isRegen: true,
-      });
-    }
-    return items;
-  } catch(e) {
-    console.error('Brownfield fetch:', e);
-    showError('Planning Data', e.message);
-    return [];
-  }
-}
-
-
-// ── FETCH: PLANNING LONDON DATAHUB
-async function fetchLondon() {
-  try {
-    const res = await fetch('/api/london');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const items = [];
-
-    for (const app of (data.records || [])) {
-      const title = app.description || app.site_name || 'London Planning Application';
-      const desc = (app.description || '').toLowerCase();
-      const isRegen = REGEN_KEYWORDS.some(kw => desc.includes(kw));
-
-      // PLD centroid field: { lat: 51.5, lon: -0.1 }
-      const lat = app.centroid?.lat ?? null;
-      const lng = app.centroid?.lon ?? null;
-
-      // Residential units nested under application_details
-      const units = app.application_details?.total_no_proposed_residential_units
-                 || app.total_no_proposed_residential_units
-                 || null;
-
-      const address = [app.site_number, app.street_name, app.postcode]
-        .filter(Boolean).join(' ');
-
-      items.push({
-        id: 'l_' + (app.id || app.lpa_app_no || Math.random().toString(36).substr(2,8)),
-        type: 'london',
-        title,
-        org: app.lpa_name || app.borough || 'London Borough',
-        location: address,
-        description: app.description || '',
-        status: app.decision || app.status || '',
-        reference: app.lpa_app_no || '',
-        published: app.valid_date || '',
-        units: units ? String(units) : null,
-        url: app.url_planning_app || (app.pp_id ? `https://www.planningportal.co.uk/planning/planning-applications/search-for-planning-applications?ppid=${app.pp_id}` : ''),
-        lat,
-        lng,
-        city: 'London',
-        isRegen,
-      });
-    }
-    return items;
-  } catch(e) {
-    console.error('London PLD fetch:', e);
-    showError('Planning London Datahub', e.message);
-    return [];
-  }
-}
-
-// ── RENDER
-const TYPE_LABELS = { tender: 'Market Engagement', planning: 'Planning Application', brownfield: 'Brownfield Site', london: 'London PLD' };
-const TYPE_COLORS = { tender: 'var(--tender)', planning: 'var(--planning)', brownfield: 'var(--brownfield)', london: 'var(--london)' };
-
-let currentSort = 'default';
-
-function getScaleValue(item) {
-  if (item.units) return parseInt(item.units) || 0;
-  if (item.hectares) return parseFloat(item.hectares) * 10 || 0;
-  if (item.value) return parseFloat(item.value.replace(/[£m]/g,'')) * 100 || 0;
-  return 0;
-}
-
-function scaleBadge(item) {
-  const units = item.units ? parseInt(item.units) : null;
-  const ha = item.hectares ? parseFloat(item.hectares) : null;
-  const val = item.value || null;
-  if (units && units >= 200) return `<span class="scale-badge xl">${units} homes</span>`;
-  if (units && units >= 50)  return `<span class="scale-badge large">${units} homes</span>`;
-  if (units)                 return `<span class="scale-badge">${units} homes</span>`;
-  if (ha && ha >= 2)         return `<span class="scale-badge large">${ha}ha</span>`;
-  if (ha)                    return `<span class="scale-badge">${ha}ha</span>`;
-  if (val)                   return `<span class="scale-badge">${val}</span>`;
-  return '';
-}
-
-function sortItems(items) {
-  const copy = [...items];
-  if (currentSort === 'scale') {
-    copy.sort((a, b) => getScaleValue(b) - getScaleValue(a));
-  } else if (currentSort === 'regen') {
-    copy.sort((a, b) => (b.isRegen ? 1 : 0) - (a.isRegen ? 1 : 0));
-  } else if (currentSort === 'type') {
-    const order = { tender: 0, london: 1, planning: 2, brownfield: 3 };
-    copy.sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9));
-  }
-  // default: leave in API order (most recent first from source)
-  return copy;
-}
-
-function renderCards(items) {
-  const container = document.getElementById('results-container');
-  document.getElementById('results-count').textContent =
-    `${items.length} of ${allItems.length} results`;
-
-  if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state">No projects match your current filters.<br>Try broadening your search or adjusting the filters above.</div>`;
-    return;
-  }
-
-  const sorted = sortItems(items);
-
-  container.innerHTML = `<div class="card-list">${sorted.map(item => {
-    const badge = scaleBadge(item);
-    // Smart title: truncate long planning descriptions
-    let title = item.title || '';
-    if (title.length > 120) title = title.substring(0, 120).trimEnd() + '…';
-
-    // Description preview (only for items with meaningful descriptions)
-    const hasDesc = item.description && item.description.length > 20 && item.description !== item.title;
-    const descPreview = hasDesc
-      ? `<div class="card-desc">${escHtml(item.description.substring(0, 180))}${item.description.length > 180 ? '…' : ''}</div>`
-      : '';
-
-    // Location line — most useful info
-    const locParts = [item.org, item.location].filter(Boolean);
-    const locLine = [...new Set(locParts)].join(' · ');
-
-    return `
-    <div class="card" onclick="showDetail('${escAttr(String(item.id))}')">
-      <div class="card-stripe ${item.type}"></div>
-      <div class="card-inner">
-        <div class="card-eyebrow ${item.type}">
-          ${TYPE_LABELS[item.type]}
-          ${item.isRegen ? '<span class="regen-flag">Regen</span>' : ''}
-          ${badge}
-        </div>
-        <div class="card-title">${escHtml(title)}</div>
-        ${locLine ? `<div class="card-org">${escHtml(locLine)}</div>` : ''}
-        ${descPreview}
-        <div class="card-meta">
-          ${item.published ? `<span class="meta-item">📅 <strong>${item.published}</strong></span>` : ''}
-          ${item.deadline  ? `<span class="meta-item">⏳ Deadline <strong>${item.deadline}</strong></span>` : ''}
-          ${item.status && item.status !== 'Application Under Consideration' ? `<span class="meta-item">● <strong>${escHtml(item.status)}</strong></span>` : ''}
-        </div>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
-}
-
-function handleSort() {
-  currentSort = document.getElementById('sort-select').value;
-  renderCards(filteredItems);
-}
-
-function renderCityBreakdown(items) {
-  const counts = {};
-  items.forEach(item => {
-    const city = item.city || extractCity(item.location || '') || 'Other';
-    counts[city] = (counts[city] || 0) + 1;
-  });
-
-  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 12);
-  const max = sorted[0]?.[1] || 1;
-
-  document.getElementById('city-breakdown').innerHTML = sorted.map(([city, count]) => `
-    <li class="city-item ${activeCity === city ? 'active' : ''}"
-      onclick="filterCity('${escAttr(city)}')" data-city-item="${escAttr(city)}">
-      <span class="city-name">${escHtml(city)}</span>
-      <div class="city-bar-wrap">
-        <div class="city-bar">
-          <div class="city-bar-fill" style="width:${Math.round(count/max*100)}%"></div>
-        </div>
-      </div>
-      <span class="city-count">${count}</span>
-    </li>
-  `).join('');
-
-  // Populate the city <select> dropdown
-  const sel = document.getElementById('city-select');
-  if (sel) {
-    // Keep the "All cities" option, rebuild the rest
-    sel.innerHTML = '<option value="all">All cities</option>';
-    sorted.forEach(([city, count]) => {
-      const opt = document.createElement('option');
-      opt.value = city;
-      opt.textContent = `${city} (${count})`;
-      sel.appendChild(opt);
-    });
-    sel.value = activeCity;
-  }
-}
-
-function extractCity(loc) {
-  for (const city of Object.keys(CITY_COORDS)) {
-    if (loc.toLowerCase().includes(city.toLowerCase())) return city;
-  }
-  return null;
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function escAttr(str) {
-  return String(str).replace(/'/g,"\\'").replace(/"/g,'&quot;');
-}
-
-// ── FILTERS
-function applyFilters() {
-  filteredItems = allItems.filter(item => {
-    // Source type
-    if (!activeFilters[item.type]) return false;
-    // Regen flag
-    if (regenOnly && !item.isRegen) return false;
-    // Residential units
-    if (residentialOnly && !item.units) return false;
-    // City
-    if (activeCity !== 'all') {
-      const city = item.city || extractCity(item.location || '');
-      if (city !== activeCity) return false;
-    }
-    // Status
-    if (activeStatus !== 'all') {
-      const s = (item.status || '').toLowerCase();
-      if (activeStatus === 'undecided' && !(s.includes('undecided') || s.includes('consideration') || s.includes('pending') || s === '')) return false;
-      if (activeStatus === 'approved'  && !(s.includes('approved') || s.includes('permitted') || s.includes('granted') || s.includes('conditions'))) return false;
-    }
-    // Search
-    if (searchTerm) {
-      const hay = `${item.title} ${item.org} ${item.location} ${item.description}`.toLowerCase();
-      if (!hay.includes(searchTerm)) return false;
+    if(regionFilter!=='all'&&item.region!==regionFilter)return false;
+    if(scaleFilter!=='all'&&currentTab!=='procurement'){
+      const u=parseInt(item.units||0);
+      if(scaleFilter==='50'&&!(u>=50&&u<200))return false;
+      if(scaleFilter==='200'&&!(u>=200&&u<500))return false;
+      if(scaleFilter==='500'&&u<500)return false;
     }
     return true;
   });
-
-  renderCards(filteredItems);
-  updateMarkers();
 }
 
-function toggleFilter(type) {
-  activeFilters[type] = !activeFilters[type];
-  const btn = document.querySelector(`.chip[data-filter="${type}"]`);
-  if (btn) btn.classList.toggle('active', activeFilters[type]);
-  applyFilters();
+function handleSearch(){
+  searchTerm=document.getElementById('search-input').value.toLowerCase().trim();
+  document.getElementById('search-clear').classList.toggle('visible',searchTerm.length>0);
+  renderCurrentTab();
+}
+function clearSearch(){
+  searchTerm='';
+  document.getElementById('search-input').value='';
+  document.getElementById('search-clear').classList.remove('visible');
+  renderCurrentTab();
+}
+function setScale(s){
+  scaleFilter=s;
+  document.querySelectorAll('[data-scale]').forEach(b=>b.classList.toggle('active',b.dataset.scale===s));
+  renderCurrentTab();
 }
 
-function toggleRegen() {
-  regenOnly = !regenOnly;
-  const btn = document.getElementById('regen-toggle');
-  btn.classList.toggle('active', regenOnly);
-  applyFilters();
+function renderCurrentTab(){
+  const items=getItems();
+  document.getElementById('results-meta').textContent=`${items.length} result${items.length!==1?'s':''}`;
+  updateMarkers(items);
+  if(currentTab==='procurement')renderProcurement(items);
+  else if(currentTab==='pipeline')renderPipeline(items);
+  else renderLand(items);
 }
 
-function toggleResidential() {
-  residentialOnly = !residentialOnly;
-  const btn = document.getElementById('residential-toggle');
-  btn.classList.toggle('active', residentialOnly);
-  applyFilters();
-}
-
-function filterCity(city) {
-  activeCity = city;
-  const sel = document.getElementById('city-select');
-  if (sel) sel.value = city;
-  document.querySelectorAll('[data-city-item]').forEach(li =>
-    li.classList.toggle('active', li.dataset.cityItem === city));
-  applyFilters();
-}
-
-function filterStatus(status) {
-  activeStatus = status;
-  document.querySelectorAll('[data-status]').forEach(b =>
-    b.classList.toggle('active', b.dataset.status === status));
-  applyFilters();
-}
-
-function handleSearch() {
-  searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-  const clearBtn = document.getElementById('search-clear');
-  if (clearBtn) clearBtn.classList.toggle('visible', searchTerm.length > 0);
-  if (allItems.length > 0) applyFilters();
-}
-
-function clearSearch() {
-  searchTerm = '';
-  const input = document.getElementById('search-input');
-  const clearBtn = document.getElementById('search-clear');
-  if (input) input.value = '';
-  if (clearBtn) clearBtn.classList.remove('visible');
-  applyFilters();
-}
-
-function clearAllFilters() {
-  // Reset all state
-  activeFilters = { tender: true, planning: true, brownfield: true, london: true };
-  activeCity = 'all';
-  activeStatus = 'all';
-  regenOnly = false;
-  residentialOnly = false;
-  clearSearch();
-  // Reset UI
-  document.querySelectorAll('.chip[data-filter]').forEach(b => b.classList.add('active'));
-  document.querySelectorAll('[data-status]').forEach(b =>
-    b.classList.toggle('active', b.dataset.status === 'all'));
-  document.getElementById('regen-toggle')?.classList.remove('active');
-  document.getElementById('residential-toggle')?.classList.remove('active');
-  const sel = document.getElementById('city-select');
-  if (sel) sel.value = 'all';
-  document.querySelectorAll('[data-city-item]').forEach(li => li.classList.remove('active'));
-  applyFilters();
-}
-
-// ── DETAIL PANEL
-function showDetail(id) {
-  const item = allItems.find(i => String(i.id) === String(id));
-  if (!item) return;
-
-  document.getElementById('detail-type').innerHTML =
-    `<span style="color:${TYPE_COLORS[item.type]}">${TYPE_LABELS[item.type]}</span>`;
-  document.getElementById('detail-title').textContent = item.title;
-
-  const fields = [
-    ['Organisation', item.org],
-    ['Location',     item.location],
-    ['Reference',    item.reference],
-    ['Status',       item.status],
-    ['Submitted',    item.published],
-    ['Deadline',     item.deadline],
-    ['Estimated Value', item.value],
-    ['Site Area',    item.hectares ? `${item.hectares} hectares` : null],
-    ['Min. Net Dwellings', item.units],
-  ].filter(([,v]) => v);
-
-  document.getElementById('detail-body').innerHTML = `
-    ${item.description ? `
-    <div class="detail-section">
-      <div class="detail-field-label">Description</div>
-      <div class="detail-field-value">${escHtml(item.description.substring(0,900))}${item.description.length > 900 ? '…' : ''}</div>
-    </div>` : ''}
-    <div class="detail-section">
-      ${fields.map(([label, val]) => `
-        <div class="detail-field">
-          <div class="detail-field-label">${label}</div>
-          <div class="detail-field-value">${escHtml(String(val))}</div>
+// RENDER PROCUREMENT
+function renderProcurement(items){
+  const el=document.getElementById('panel-procurement');
+  if(!items.length){el.innerHTML='<div class="empty-state">No procurement notices match your filters.</div>';return;}
+  const sorted=[...items].sort((a,b)=>{
+    const da=daysUntil(a._deadlineRaw),db=daysUntil(b._deadlineRaw);
+    if(da===null&&db===null)return 0;if(da===null)return 1;if(db===null)return -1;return da-db;
+  });
+  el.innerHTML=sorted.map(item=>{
+    const days=daysUntil(item._deadlineRaw);
+    return`<div class="proc-card" onclick="showDetail('${escAttr(String(item.id))}')">
+      <div class="proc-stripe"></div>
+      <div class="proc-body">
+        <div class="proc-eyebrow">Procurement Notice ${item.isRegen?'<span class="regen-pill">Regen</span>':''}</div>
+        <div class="proc-title">${escHtml(item.title)}</div>
+        <div class="proc-org">${escHtml(item.org)}${item.location?' · '+escHtml(item.location):''}</div>
+        ${item.description?`<div class="proc-desc">${escHtml(item.description)}</div>`:''}
+        <div class="proc-tags">
+          ${item.value?`<span class="proc-tag">${escHtml(item.value)}</span>`:''}
+          ${item.region?`<span class="proc-tag">${escHtml(item.region)}</span>`:''}
+          ${item.published?`<span class="proc-tag">Published ${escHtml(item.published)}</span>`:''}
         </div>
-      `).join('')}
-    </div>
-    ${item.url ? `<a href="${escHtml(item.url)}" target="_blank" rel="noopener" class="detail-link">View original notice →</a>` : ''}
-  `;
+      </div>
+      <div class="proc-deadline">
+        <div class="deadline-label">Deadline</div>
+        <div class="deadline-date">${escHtml(item.deadline||'TBC')}</div>
+        ${deadlineBadge(days)}
+      </div>
+    </div>`;
+  }).join('');
+}
 
+// RENDER PIPELINE
+function renderPipeline(items){
+  const el=document.getElementById('panel-pipeline');
+  if(!items.length){el.innerHTML='<div class="empty-state">No planning applications match your filters.</div>';return;}
+  const order={outline:0,reserved:1,full:2,prior:3,unknown:4};
+  const sorted=[...items].sort((a,b)=>{
+    const s=(order[a._stage?.cls]??4)-(order[b._stage?.cls]??4);
+    return s!==0?s:(parseInt(b.units)||0)-(parseInt(a.units)||0);
+  });
+  el.innerHTML=sorted.map(item=>{
+    const u=item.units?parseInt(item.units):null;
+    const badge=u?(u>=200?`<span class="scale-badge xl">${u} homes</span>`:`<span class="scale-badge lg">${u} homes</span>`):'';
+    const sc=item._tab==='london'?'london':'';
+    const ec=item._tab==='london'?'london':'';
+    const lbl=item._tab==='london'?'London PLD':'Planning';
+    return`<div class="pipe-card" onclick="showDetail('${escAttr(String(item.id))}')">
+      <div class="pipe-stripe ${sc}"></div>
+      <div>
+        <div class="pipe-header">
+          <div class="pipe-eyebrow ${ec}">${lbl}</div>
+          ${item._stage?`<span class="pipe-stage ${item._stage.cls}">${item._stage.label}</span>`:''}
+        </div>
+        <div class="pipe-title">${escHtml((item.title||'').substring(0,130))}${(item.title||'').length>130?'…':''}</div>
+        <div class="pipe-org">${escHtml(item.org||'')}${item.location?' · '+escHtml(item.location):''}</div>
+        ${item.description&&item.description!==item.title?`<div class="pipe-desc">${escHtml(item.description.substring(0,200))}${item.description.length>200?'…':''}</div>`:''}
+        <div class="pipe-meta">
+          ${badge}
+          ${item.published?`<span class="pipe-meta-item">Submitted <strong>${escHtml(item.published)}</strong></span>`:''}
+          ${item.region?`<span class="pipe-meta-item">${escHtml(item.region)}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// RENDER LAND
+function renderLand(items){
+  const el=document.getElementById('panel-land');
+  if(!items.length){el.innerHTML='<div class="empty-state">No brownfield sites match your filters.</div>';return;}
+  const sorted=[...items].sort((a,b)=>(parseInt(b.units)||0)-(parseInt(a.units)||0));
+  el.innerHTML=sorted.map(item=>{
+    const s=item.status||'';
+    const pc=s==='not-permissioned'?'no':s==='pending-decision'?'pending':'yes';
+    const pl=s==='not-permissioned'?'No Permission Yet':s==='pending-decision'?'Decision Pending':'Permissioned';
+    return`<div class="land-card" onclick="showDetail('${escAttr(String(item.id))}')">
+      <div class="land-stripe"></div>
+      <div>
+        <div class="land-header">
+          <div class="land-eyebrow">Brownfield Site</div>
+          <span class="land-perm ${pc}">${pl}</span>
+        </div>
+        <div class="land-address">${escHtml(item.location||item.title||'Brownfield site')}</div>
+        ${item.org?`<div class="land-lpa">${escHtml(item.org)}</div>`:''}
+        ${item.description?`<div class="land-notes">${escHtml(item.description.substring(0,200))}${item.description.length>200?'…':''}</div>`:''}
+        <div class="land-meta">
+          ${item.units?`<div class="land-stat"><div class="land-stat-num homes">${item.units}</div><div class="land-stat-label">min. homes</div></div>`:''}
+          ${item.hectares?`<div class="land-stat"><div class="land-stat-num ha">${item.hectares}ha</div><div class="land-stat-label">site area</div></div>`:''}
+          ${item.region?`<span class="pipe-meta-item">${escHtml(item.region)}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// DETAIL
+function allItems(){return[...allProcurement,...allPipeline,...allLand];}
+function showDetail(id){
+  const item=allItems().find(i=>String(i.id)===String(id));
+  if(!item)return;
+  const colors={procurement:'var(--procurement)',pipeline:'var(--pipeline)',london:'#6a3090',land:'var(--land)'};
+  const labels={procurement:'Procurement Notice',pipeline:'Planning Application',london:'London Planning',land:'Brownfield Land'};
+  document.getElementById('detail-type').innerHTML=`<span style="color:${colors[item._tab]||'#666'}">${labels[item._tab]||''}</span>`;
+  document.getElementById('detail-title').textContent=item.title;
+  const fields=[
+    ['Organisation',item.org],['Location',item.location],['Reference',item.reference],
+    ['Status',item.status],['Submitted',item.published],['Deadline',item.deadline],
+    ['Estimated Value',item.value],['Site Area',item.hectares?`${item.hectares} hectares`:null],
+    ['Min. Dwellings',item.units],['Region',item.region],['Stage',item._stage?.label],
+  ].filter(([,v])=>v);
+  document.getElementById('detail-body').innerHTML=`
+    ${item.description?`<div class="detail-field"><div class="detail-field-label">Description</div><div class="detail-field-value">${escHtml(item.description.substring(0,1500))}${item.description.length>1500?'…':''}</div></div>`:''}
+    ${fields.map(([l,v])=>`<div class="detail-field"><div class="detail-field-label">${l}</div><div class="detail-field-value">${escHtml(String(v))}</div></div>`).join('')}
+    ${item.url?`<a href="${escHtml(item.url)}" target="_blank" rel="noopener" class="detail-link">View original notice →</a>`:''}`;
   document.getElementById('detail-panel').classList.add('open');
-
-  // Zoom map to this item's location
-  if (item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng)) {
-    map.setView([item.lat, item.lng], 14, { animate: true, duration: 0.6 });
-    // Highlight the marker
-    markerLayer.eachLayer(layer => {
-      if (layer.getLatLng &&
-          Math.abs(layer.getLatLng().lat - item.lat) < 0.001 &&
-          Math.abs(layer.getLatLng().lng - item.lng) < 0.001) {
-        layer.openPopup();
-      }
+  if(item.lat&&item.lng&&!isNaN(item.lat)&&!isNaN(item.lng)){
+    map.setView([item.lat,item.lng],14,{animate:true,duration:0.5});
+    markerLayer.eachLayer(l=>{
+      if(l.getLatLng&&Math.abs(l.getLatLng().lat-item.lat)<0.001&&Math.abs(l.getLatLng().lng-item.lng)<0.001)l.openPopup();
     });
   }
 }
-
-function closeDetail() {
+function closeDetail(){
   document.getElementById('detail-panel').classList.remove('open');
-  // Zoom back out to UK overview
-  if (map) map.setView([52.5, -1.5], 6, { animate: true, duration: 0.5 });
+  if(map)map.setView([52.5,-1.5],6,{animate:true,duration:0.5});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+
+// FETCH TENDERS
+async function fetchTenders(){
+  try{
+    const res=await fetch('/api/tenders');
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    const items=[];
+    for(const release of(data.releases||[])){
+      const tender=release.tender||{};
+      const title=tender.title||'';
+      const description=tender.description||'';
+      const fullText=`${title} ${description}`.toLowerCase();
+      const isRegen=REGEN_KEYWORDS.some(kw=>fullText.includes(kw));
+
+      const buyer=(release.parties||[]).find(p=>(p.roles||[]).includes('buyer'));
+      const buyerName=buyer?.name||'';
+      const buyerLocality=buyer?.address?.locality||buyer?.address?.region||'';
+      const region=(tender.items||[]).flatMap(i=>i.deliveryAddresses||[])[0]?.region||'';
+      const locationStr=`${buyerLocality} ${region} ${buyerName}`.toLowerCase();
+
+      let lat=null,lng=null,matchedCity=null;
+      for(const[city,coords]of Object.entries(CITY_COORDS)){
+        if(locationStr.includes(city.toLowerCase())){
+          lat=coords.lat+(Math.random()-0.5)*0.04;
+          lng=coords.lng+(Math.random()-0.5)*0.04;
+          matchedCity=city;break;
+        }
+      }
+
+      const deadlineRaw=tender.submissionTerms?.bidDeadline||tender.communication?.futureNoticeDate||null;
+      const value=tender.value?.amount;
+
+      const item={
+        id:'t_'+(release.id||Math.random().toString(36).substr(2,8)),
+        _tab:'procurement',
+        title:title||'Untitled Notice',
+        org:buyerName||'Unknown authority',
+        location:buyerLocality||region||'',
+        description,
+        deadline:deadlineRaw?fmtDate(deadlineRaw):null,
+        _deadlineRaw:deadlineRaw,
+        value:value?`£${(value/1e6).toFixed(1)}m`:null,
+        published:release.date?fmtDate(release.date):null,
+        url:`https://www.find-tender.service.gov.uk/Notice/${release.id}`,
+        lat,lng,city:matchedCity,isRegen,
+      };
+      item.region=detectRegion(item);
+      items.push(item);
+    }
+    return items;
+  }catch(e){console.error('Tenders:',e);return[];}
 }
 
-// Sources toggle
-document.querySelectorAll('.sidebar-section').forEach(sec => {
-  sec.addEventListener('click', e => {
-    if (!e.target.closest('.sidebar-heading')) return;
-    const body = sec.querySelector('.sources-body');
-    if (!body) return;
-    sec.classList.toggle('sources-open');
-    const isNowOpen = sec.classList.contains('sources-open');
-    body.style.display = isNowOpen ? 'block' : 'none';
-    const arrow = sec.querySelector('.sidebar-heading span');
-    if (arrow) arrow.textContent = isNowOpen ? '▾' : '▸';
-  });
-});
-
-// Escape key closes panel
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDetail();
-});
-
-// ── ERRORS
-function showError(source, msg) {
-  document.getElementById('error-container').innerHTML += `
-    <div class="error-bar">
-      <strong>⚠ ${escHtml(source)}</strong>
-      ${escHtml(msg)}. Check your Vercel API route logs.
-    </div>
-  `;
+// FETCH PLANNING
+async function fetchPlanning(){
+  const items=[];
+  // PlanIt
+  try{
+    const res=await fetch('/api/planning');
+    if(res.ok){
+      const data=await res.json();
+      const records=(data.cities||[]).flatMap(c=>c.records||[]);
+      for(const app of records){
+        const title=app.description||app.app_type||'Planning Application';
+        const isRegen=REGEN_KEYWORDS.some(kw=>(app.description||'').toLowerCase().includes(kw));
+        let lat=parseFloat(app.location_y),lng=parseFloat(app.location_x);
+        if((isNaN(lat)||isNaN(lng))&&app.location?.coordinates)[lng,lat]=app.location.coordinates;
+        const authorityStr=(app.area_name||app.address||'').toLowerCase();
+        let matchedCity=null;
+        for(const city of Object.keys(CITY_COORDS)){if(authorityStr.includes(city.toLowerCase())){matchedCity=city;break;}}
+        if((isNaN(lat)||isNaN(lng))&&matchedCity){const cc=CITY_COORDS[matchedCity];lat=cc.lat+(Math.random()-0.5)*0.06;lng=cc.lng+(Math.random()-0.5)*0.08;}
+        const m=(app.description||'').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
+        const u=m?parseInt(m[1]):null;
+        if(u!==null&&u<50)continue;
+        const item={
+          id:'p_'+(app.uid||app.name||Math.random().toString(36).substr(2,8)),
+          _tab:'pipeline',title,org:app.area_name||'',location:app.address||'',
+          description:app.description||'',status:app.app_state||'',
+          reference:app.uid||app.name||'',published:app.start_date||'',
+          units:u?String(u):null,
+          url:app.link?`https://www.planit.org.uk${app.link}`:'',
+          lat:isNaN(lat)?null:lat,lng:isNaN(lng)?null:lng,city:matchedCity,isRegen,
+        };
+        item.region=detectRegion(item);
+        item._stage=detectStage(`${item.description} ${item.title} ${item.reference}`);
+        items.push(item);
+      }
+    }
+  }catch(e){console.error('PlanIt:',e);}
+  // London PLD
+  try{
+    const res=await fetch('/api/london');
+    if(res.ok){
+      const data=await res.json();
+      for(const app of(data.records||[])){
+        const title=app.description||app.site_name||'London Planning Application';
+        const isRegen=REGEN_KEYWORDS.some(kw=>(app.description||'').toLowerCase().includes(kw));
+        const lat=app.centroid?.lat??null;
+        const lng=app.centroid?.lon??null;
+        const units=app.application_details?.total_no_proposed_residential_units||null;
+        const address=[app.site_number,app.street_name,app.postcode].filter(Boolean).join(' ');
+        const item={
+          id:'l_'+(app.id||app.lpa_app_no||Math.random().toString(36).substr(2,8)),
+          _tab:'london',title,org:app.lpa_name||app.borough||'London Borough',
+          location:address,description:app.description||'',
+          status:app.decision||app.status||'',reference:app.lpa_app_no||'',
+          published:app.valid_date||'',units:units?String(units):null,
+          url:app.url_planning_app||'',lat,lng,city:'London',isRegen,region:'London',
+        };
+        item._stage=detectStage(`${item.description} ${item.title} ${item.reference} ${app.application_type_full||''}`);
+        items.push(item);
+      }
+    }
+  }catch(e){console.error('London PLD:',e);}
+  return items;
 }
 
-// ── STATS
-function updateStats() {
-  document.getElementById('stat-tender').textContent =
-    allItems.filter(i => i.type === 'tender').length || '0';
-  document.getElementById('stat-planning').textContent =
-    allItems.filter(i => i.type === 'planning').length || '0';
-  document.getElementById('stat-brownfield').textContent =
-    allItems.filter(i => i.type === 'brownfield').length || '0';
-  document.getElementById('stat-london').textContent =
-    allItems.filter(i => i.type === 'london').length || '0';
+// FETCH BROWNFIELD
+async function fetchBrownfield(){
+  try{
+    const res=await fetch('/api/brownfield');
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    return(data.entities||[]).map(entity=>{
+      let lat=parseFloat(entity.latitude),lng=parseFloat(entity.longitude);
+      if((isNaN(lat)||isNaN(lng))&&entity.point){
+        const wkt=entity.point.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+        if(wkt){lng=parseFloat(wkt[1]);lat=parseFloat(wkt[2]);}
+      }
+      const item={
+        id:'b_'+(entity.reference||String(entity.entity||Math.random())),
+        _tab:'land',
+        title:entity['site-name']||entity.name||entity.reference||'Brownfield Site',
+        org:entity['local-authority']||entity.organisation||'',
+        location:entity['site-address']||entity.address||'',
+        description:entity.notes||'',
+        hectares:entity['site-hectares']||null,
+        units:entity['minimum-net-dwellings']||null,
+        status:entity['planning-permission-status']||'',
+        url:entity['planning-permission-url']||`https://www.planning.data.gov.uk/entity/${entity.entity}`,
+        lat:isNaN(lat)?null:lat,lng:isNaN(lng)?null:lng,isRegen:true,
+      };
+      item.region=detectRegion(item);
+      return item;
+    });
+  }catch(e){console.error('Brownfield:',e);return[];}
 }
 
-// ── INIT
-async function init() {
+// REGION SELECT
+function populateRegions(){
+  const all=new Set([...allProcurement,...allPipeline,...allLand].map(i=>i.region).filter(Boolean));
+  const sel=document.getElementById('region-select');
+  sel.innerHTML='<option value="all">All regions</option>';
+  [...all].sort().forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
+}
+
+// TAB COUNTS
+function updateCounts(){
+  document.getElementById('cnt-procurement').textContent=allProcurement.length;
+  document.getElementById('cnt-pipeline').textContent=allPipeline.length;
+  document.getElementById('cnt-land').textContent=allLand.length;
+}
+
+// INIT
+async function init(){
   initMap();
-
-  const [tenders, planning, brownfield, london] = await Promise.all([
-    fetchTenders(),
-    fetchPlanning(),
-    fetchBrownfield(),
-    fetchLondon(),
-  ]);
-
-  allItems = [...tenders, ...planning, ...brownfield, ...london];
-  filteredItems = [...allItems];
-
-  updateStats();
-  renderCityBreakdown(allItems);
-  renderCards(filteredItems);
-  updateMarkers();
+  const[tenders,planning,brownfield]=await Promise.all([fetchTenders(),fetchPlanning(),fetchBrownfield()]);
+  allProcurement.push(...tenders);
+  // merge PlanIt + London into pipeline
+  allPipeline.push(...planning);
+  allLand.push(...brownfield);
+  updateCounts();
+  populateRegions();
+  renderCurrentTab();
 }
-
 init();
 </script>
 </body>
