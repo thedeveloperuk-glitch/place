@@ -1,40 +1,30 @@
-// Planning London Datahub (PLD) — public Elasticsearch API
-// No auth required for guest read access
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Date 60 days ago in DD/MM/YYYY (PLD's date format)
     const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
     const sinceStr = `${String(since.getDate()).padStart(2,'0')}/${String(since.getMonth()+1).padStart(2,'0')}/${since.getFullYear()}`;
 
-    // Filter: validated in last 60 days AND GIA gained >= 1000m²
-    // (GIA >= 1000 is the standard major development threshold)
-    // application_type in PLD is always "All Other" / "Householder" — not useful for filtering
     const query = {
       size: 50,
       query: {
         bool: {
           must: [
-            {
-              range: {
-                valid_date: { gte: sinceStr, format: 'dd/MM/yyyy' }
-              }
-            },
-            {
-              range: {
-                'application_details.total_gia_gained': { gte: 1000 }
-              }
-            }
+            { range: { valid_date: { gte: sinceStr, format: 'dd/MM/yyyy' } } },
           ],
+          should: [
+            // 50+ proposed residential units
+            { range: { 'application_details.total_no_proposed_residential_units': { gte: 50 } } },
+            // OR large GIA (3,500m² ≈ 50 homes at ~70m² each)
+            { range: { 'application_details.total_gia_gained': { gte: 3500 } } },
+          ],
+          minimum_should_match: 1,
           must_not: [
-            // Exclude pure householder applications
             { term: { 'application_type_full.raw': 'Householder planning permission' } },
             { term: { 'application_type_full.raw': 'Lawful development: Proposed use' } },
-            { term: { 'application_type_full.raw': 'Lawful development: Existing use' } }
+            { term: { 'application_type_full.raw': 'Lawful development: Existing use' } },
           ]
         }
       },
@@ -70,10 +60,7 @@ export default async function handler(req, res) {
     const hits = data?.hits?.hits || [];
     const records = hits.map(h => h._source);
 
-    res.status(200).json({
-      records,
-      total: data?.hits?.total?.value || records.length,
-    });
+    res.status(200).json({ records, total: data?.hits?.total?.value || records.length });
 
   } catch (e) {
     console.error('London PLD fetch error:', e.message);
