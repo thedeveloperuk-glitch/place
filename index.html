@@ -307,21 +307,39 @@
 
   /* ── RESULTS HEADER ── */
   .results-header {
-    padding: 0.85rem 2rem;
+    padding: 0.7rem 2rem;
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
     justify-content: space-between;
     background: var(--surface);
+    gap: 1rem;
   }
   .results-title {
     font-family: var(--serif); font-size: 0.9rem;
     font-style: italic; color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .results-header-right {
+    display: flex; align-items: center; gap: 1rem;
   }
   .results-count {
     font-family: var(--mono); font-size: 0.58rem;
     color: var(--text-dim); letter-spacing: 0.06em;
-    text-transform: uppercase;
+    text-transform: uppercase; white-space: nowrap;
   }
+  .sort-select {
+    font-family: var(--mono); font-size: 0.58rem;
+    letter-spacing: 0.03em; padding: 0.25rem 1.6rem 0.25rem 0.6rem;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text-muted); cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a09890'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 7px;
+    outline: none;
+  }
+  .sort-select:focus { border-color: var(--text-dim); }
 
   /* ── LOADING ── */
   .loading-state {
@@ -379,24 +397,43 @@
   }
 
   .card-title {
-    font-family: var(--serif); font-size: 1rem;
-    font-weight: 400; line-height: 1.35;
-    color: var(--text); margin-bottom: 0.25rem;
+    font-family: var(--serif); font-size: 0.95rem;
+    font-weight: 400; line-height: 1.3;
+    color: var(--text); margin-bottom: 0.15rem;
     letter-spacing: -0.01em;
   }
   .card-org {
-    font-size: 0.75rem; color: var(--text-muted);
-    font-weight: 300; margin-bottom: 0.6rem;
+    font-size: 0.72rem; color: var(--text-muted);
+    font-weight: 300; margin-bottom: 0.4rem;
+  }
+  .card-desc {
+    font-size: 0.78rem; color: var(--text-muted);
+    font-weight: 300; line-height: 1.5;
+    margin-bottom: 0.55rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .card-meta {
-    display: flex; gap: 1.25rem; flex-wrap: wrap;
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
   }
   .meta-item {
-    font-family: var(--mono); font-size: 0.57rem;
+    font-family: var(--mono); font-size: 0.56rem;
     color: var(--text-dim); letter-spacing: 0.03em;
     display: flex; align-items: center; gap: 0.25rem;
   }
   .meta-item strong { color: var(--text-muted); font-weight: 400; }
+  .scale-badge {
+    font-family: var(--mono); font-size: 0.55rem;
+    letter-spacing: 0.04em; padding: 0.15rem 0.5rem;
+    border-radius: 1px; font-weight: 400;
+    background: var(--surface2); color: var(--text-muted);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .scale-badge.large { background: var(--planning-bg); color: var(--planning); border-color: var(--planning-border); }
+  .scale-badge.xl    { background: #f0f4fb; color: #1040a0; border-color: #90b8e0; font-weight: 500; }
 
   /* ── EMPTY / ERROR ── */
   .empty-state {
@@ -609,17 +646,17 @@
   <div class="stat-cell planning">
     <span class="stat-label">Planning Applications</span>
     <div class="stat-num planning" id="stat-planning">—</div>
-    <div class="stat-sub">Large-scale · last 60 days</div>
+    <div class="stat-sub">50+ homes · last 60 days</div>
   </div>
   <div class="stat-cell brownfield">
     <span class="stat-label">Brownfield Sites</span>
     <div class="stat-num brownfield" id="stat-brownfield">—</div>
-    <div class="stat-sub">Active register · England</div>
+    <div class="stat-sub">50+ homes · unbuilt sites</div>
   </div>
   <div class="stat-cell london">
     <span class="stat-label">London Applications</span>
     <div class="stat-num london" id="stat-london">—</div>
-    <div class="stat-sub">All 33 boroughs · last 60 days</div>
+    <div class="stat-sub">50+ homes · last 60 days</div>
   </div>
 </div>
 
@@ -693,7 +730,15 @@
 
     <div class="results-header">
       <div class="results-title">Pipeline Projects</div>
-      <div class="results-count" id="results-count">Loading…</div>
+      <div class="results-header-right">
+        <select class="sort-select" id="sort-select" onchange="handleSort()">
+          <option value="default">Most recent</option>
+          <option value="scale">Largest scale</option>
+          <option value="regen">Regen flagged first</option>
+          <option value="type">By type</option>
+        </select>
+        <div class="results-count" id="results-count">Loading…</div>
+      </div>
     </div>
 
     <div id="error-container"></div>
@@ -964,6 +1009,13 @@ async function fetchPlanning() {
         lng = cc.lng + (Math.random() - 0.5) * 0.08;
       }
 
+      // Extract dwelling count hint from description
+      const dwellingMatch = (app.description || '').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
+      const estimatedUnits = dwellingMatch ? parseInt(dwellingMatch[1]) : null;
+
+      // Skip if we can confidently identify it's under 50 homes
+      if (estimatedUnits !== null && estimatedUnits < 50) continue;
+
       items.push({
         id: 'p_' + (app.uid || app.name || Math.random().toString(36).substr(2,8)),
         type: 'planning',
@@ -974,6 +1026,7 @@ async function fetchPlanning() {
         status: app.app_state || '',
         reference: app.uid || app.name || '',
         published: app.start_date || '',
+        units: estimatedUnits ? String(estimatedUnits) : null,
         url: app.link ? `https://www.planit.org.uk${app.link}` : app.url || '',
         lat: isNaN(lat) ? null : lat,
         lng: isNaN(lng) ? null : lng,
@@ -1094,37 +1147,95 @@ async function fetchLondon() {
 const TYPE_LABELS = { tender: 'Market Engagement', planning: 'Planning Application', brownfield: 'Brownfield Site', london: 'London PLD' };
 const TYPE_COLORS = { tender: 'var(--tender)', planning: 'var(--planning)', brownfield: 'var(--brownfield)', london: 'var(--london)' };
 
+let currentSort = 'default';
+
+function getScaleValue(item) {
+  if (item.units) return parseInt(item.units) || 0;
+  if (item.hectares) return parseFloat(item.hectares) * 10 || 0;
+  if (item.value) return parseFloat(item.value.replace(/[£m]/g,'')) * 100 || 0;
+  return 0;
+}
+
+function scaleBadge(item) {
+  const units = item.units ? parseInt(item.units) : null;
+  const ha = item.hectares ? parseFloat(item.hectares) : null;
+  const val = item.value || null;
+  if (units && units >= 200) return `<span class="scale-badge xl">${units} homes</span>`;
+  if (units && units >= 50)  return `<span class="scale-badge large">${units} homes</span>`;
+  if (units)                 return `<span class="scale-badge">${units} homes</span>`;
+  if (ha && ha >= 2)         return `<span class="scale-badge large">${ha}ha</span>`;
+  if (ha)                    return `<span class="scale-badge">${ha}ha</span>`;
+  if (val)                   return `<span class="scale-badge">${val}</span>`;
+  return '';
+}
+
+function sortItems(items) {
+  const copy = [...items];
+  if (currentSort === 'scale') {
+    copy.sort((a, b) => getScaleValue(b) - getScaleValue(a));
+  } else if (currentSort === 'regen') {
+    copy.sort((a, b) => (b.isRegen ? 1 : 0) - (a.isRegen ? 1 : 0));
+  } else if (currentSort === 'type') {
+    const order = { tender: 0, london: 1, planning: 2, brownfield: 3 };
+    copy.sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9));
+  }
+  // default: leave in API order (most recent first from source)
+  return copy;
+}
+
 function renderCards(items) {
   const container = document.getElementById('results-container');
   document.getElementById('results-count').textContent =
     `${items.length} of ${allItems.length} results`;
 
   if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state">No projects match your current filters.<br>Try broadening your search or adjusting the type/city filters.</div>`;
+    container.innerHTML = `<div class="empty-state">No projects match your current filters.<br>Try broadening your search or adjusting the filters above.</div>`;
     return;
   }
 
-  container.innerHTML = `<div class="card-list">${items.map(item => `
+  const sorted = sortItems(items);
+
+  container.innerHTML = `<div class="card-list">${sorted.map(item => {
+    const badge = scaleBadge(item);
+    // Smart title: truncate long planning descriptions
+    let title = item.title || '';
+    if (title.length > 120) title = title.substring(0, 120).trimEnd() + '…';
+
+    // Description preview (only for items with meaningful descriptions)
+    const hasDesc = item.description && item.description.length > 20 && item.description !== item.title;
+    const descPreview = hasDesc
+      ? `<div class="card-desc">${escHtml(item.description.substring(0, 180))}${item.description.length > 180 ? '…' : ''}</div>`
+      : '';
+
+    // Location line — most useful info
+    const locParts = [item.org, item.location].filter(Boolean);
+    const locLine = [...new Set(locParts)].join(' · ');
+
+    return `
     <div class="card" onclick="showDetail('${escAttr(String(item.id))}')">
       <div class="card-stripe ${item.type}"></div>
       <div class="card-inner">
         <div class="card-eyebrow ${item.type}">
           ${TYPE_LABELS[item.type]}
           ${item.isRegen ? '<span class="regen-flag">Regen</span>' : ''}
+          ${badge}
         </div>
-        <div class="card-title">${escHtml(item.title)}</div>
-        <div class="card-org">${escHtml(item.org || '')}</div>
+        <div class="card-title">${escHtml(title)}</div>
+        ${locLine ? `<div class="card-org">${escHtml(locLine)}</div>` : ''}
+        ${descPreview}
         <div class="card-meta">
-          ${item.location ? `<span class="meta-item">📍 <strong>${escHtml(item.location)}</strong></span>` : ''}
-          ${item.deadline ? `<span class="meta-item">Deadline <strong>${item.deadline}</strong></span>` : ''}
-          ${item.value    ? `<span class="meta-item">Value <strong>${item.value}</strong></span>` : ''}
-          ${item.status   ? `<span class="meta-item">Status <strong>${escHtml(item.status)}</strong></span>` : ''}
-          ${item.hectares ? `<span class="meta-item">Area <strong>${item.hectares}ha</strong></span>` : ''}
-          ${item.published? `<span class="meta-item">Submitted <strong>${item.published}</strong></span>` : ''}
+          ${item.published ? `<span class="meta-item">📅 <strong>${item.published}</strong></span>` : ''}
+          ${item.deadline  ? `<span class="meta-item">⏳ Deadline <strong>${item.deadline}</strong></span>` : ''}
+          ${item.status && item.status !== 'Application Under Consideration' ? `<span class="meta-item">● <strong>${escHtml(item.status)}</strong></span>` : ''}
         </div>
       </div>
-    </div>
-  `).join('')}</div>`;
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function handleSort() {
+  currentSort = document.getElementById('sort-select').value;
+  renderCards(filteredItems);
 }
 
 function renderCityBreakdown(items) {
@@ -1398,4 +1509,3 @@ init();
 </script>
 </body>
 </html>
-
