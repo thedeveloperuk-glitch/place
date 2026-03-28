@@ -107,32 +107,62 @@ export default async function handler(req, res) {
       name: 'Birmingham',
       region: 'Midlands',
       coords: { lat: 52.4862, lng: -1.8904 },
-      // Confirmed: maps.birmingham.gov.uk Internet_Planning MapServer, Layer 45 = HELAA
-      // HELAA = Housing and Economic Land Availability Assessment
-      // Strategic housing sites identified by BCC — includes housing, regen, mixed use
-      // This is the same data that powers planvu.co.uk/bcc
+      // Confirmed: maps.birmingham.gov.uk MyBrumMap, mybrummap_Planning MapServer
+      // Layer 12 = "Post 1990 Planning Application" — live planning applications
+      // This is the same dataset powering MyBrumMap and the BCC public access map
+      // MaxRecordCount: 1000, BNG 27700, supports JSON query with date filter
+      url: 'https://maps.birmingham.gov.uk/server/rest/services/mybrummap/mybrummap_Planning/MapServer/12/query',
+      fields: '*',
+      dateField: null, // Will try date fields dynamically, fallback to 1=1
+      where: '1=1', // Layer has no easily filterable date — return recent 1000 and filter client-side
+      map: f => ({
+        // BCC uses their own planning system field names
+        // Common patterns: PA_Number, APP_NO, AppRef, Reference, REFVAL
+        // Proposal, Description, Proposal_Text
+        // Valid_Date, ValidDate, Date_Valid, AppDate
+        // Status, Decision, APP_STATUS
+        reference: f.PA_Number || f.APP_NO || f.AppRef || f.Reference || f.REFVAL || f.APP_NUM || String(f.OBJECTID || ''),
+        address: f.Location || f.Address || f.Site_Address || f.SiteAddress || f.LOCATION || f.APP_ADDRESS || '',
+        description: f.Proposal || f.Description || f.PROPOSAL || f.Proposal_Text || f.APP_DESC || '',
+        status: f.Status || f.Decision || f.APP_STATUS || f.APP_TYPE || '',
+        date: (() => {
+          const d = f.Valid_Date || f.ValidDate || f.Date_Valid || f.AppDate || f.VALID_DATE || f.RECEIVED_DATE;
+          return d ? new Date(d).toLocaleDateString('en-GB') : null;
+        })(),
+        units: null, // Extract from description in the main loop
+        url: f.PA_Number
+          ? `https://idoxpa.westmidlands.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${f.PA_Number}`
+          : 'https://maps.birmingham.gov.uk/webapps/brum/mybrummap/',
+      }),
+      srid: 27700,
+      // Also add HELAA as second Birmingham entry for strategic sites
+    },
+    {
+      name: 'Birmingham',
+      region: 'Midlands',
+      coords: { lat: 52.4862, lng: -1.8904 },
+      // Secondary: Internet_Planning MapServer, Layer 45 = HELAA
+      // Housing and Economic Land Availability Assessment — strategic allocations
+      // Same data as planvu.co.uk/bcc proposals map
       url: 'https://maps.birmingham.gov.uk/server/rest/services/Internet_Planning/MapServer/45/query',
       fields: '*',
-      dateField: null, // HELAA is a strategic dataset, not time-filtered
-      where: '1=1', // Get all HELAA sites — we filter by units in the loop
+      dateField: null,
+      where: '1=1',
       map: f => ({
-        // HELAA field names — queried with outFields=* so we get everything
-        // Common HELAA fields across councils: SiteRef/Site_Ref, SiteName/Site_Name,
-        // Address, Units/Dwellings/NetDwellings, Status, LandUse/Use
-        reference: f.SiteRef || f.Site_Ref || f.SITE_REF || f.HELAARef || String(f.OBJECTID || ''),
-        address: f.Address || f.SiteAddress || f.Site_Address || f.SITE_ADDRESS || f.SiteName || f.Site_Name || '',
+        reference: f.SiteRef || f.Site_Ref || f.SITE_REF || f.HELAARef || f.REF || String(f.OBJECTID || ''),
+        address: f.Address || f.SiteAddress || f.Site_Address || f.SiteName || f.Site_Name || f.SITE_NAME || '',
         description: [
-          f.SiteName || f.Site_Name || f.SITE_NAME || '',
-          f.LandUse || f.Land_Use || f.UseType || f.Use || '',
-          f.Status || f.SiteStatus || '',
+          f.SiteName || f.Site_Name || f.SITE_NAME || f.Name || '',
+          f.LandUse || f.Land_Use || f.UseType || f.Use || f.USE || '',
+          f.Status || f.SiteStatus || f.SITE_STATUS || '',
         ].filter(Boolean).join(' — '),
-        status: f.Status || f.SiteStatus || f.SITE_STATUS || '',
-        units: f.Units || f.NetDwellings || f.Dwellings || f.HousingUnits || f.Net_Dwellings || null,
+        status: f.Status || f.SiteStatus || f.SITE_STATUS || 'HELAA allocation',
+        units: f.Units || f.NetDwellings || f.Dwellings || f.HousingUnits || f.Net_Dwellings || f.DWELLINGS || null,
         date: null,
         url: 'https://www.planvu.co.uk/bcc/',
       }),
       srid: 27700,
-      minUnits: 50, // Filter sites with 50+ homes
+      minUnits: 50,
     },
   ];
 
