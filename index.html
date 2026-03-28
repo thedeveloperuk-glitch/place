@@ -995,59 +995,60 @@ async function fetchTenders(){
 // FETCH PLANNING
 async function fetchPlanning(){
   const items=[];
-  // PlanIt — parallel city queries
+  // Idox scraper — major English cities outside London
   try{
     const res=await fetch('/api/planning');
     if(res.ok){
       const data=await res.json();
       const records=(data.cities||[]).flatMap(c=>c.records||[]);
       for(const app of records){
-        const title=app.description||app.app_type||'Planning Application';
-        const desc=(app.description||'').toLowerCase();
-        const isRegen=REGEN_KEYWORDS.some(kw=>desc.includes(kw));
+        const desc=app.description||'';
+        const title=desc||app.reference||'Planning Application';
+        const descLower=desc.toLowerCase();
+        const isRegen=REGEN_KEYWORDS.some(kw=>descLower.includes(kw));
 
-        let lat=parseFloat(app.location_y),lng=parseFloat(app.location_x);
-        if((isNaN(lat)||isNaN(lng))&&app.location?.coordinates){
-          const c=app.location.coordinates;
-          if(Array.isArray(c)&&c.length===2){lng=c[0];lat=c[1];}
-        }
+        // Extract dwelling count from description
+        const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
+        const u=m?parseInt(m[1]):null;
+        if(u!==null&&u<50)continue;
 
-        const authorityStr=(app.area_name||app.address||'').toLowerCase();
+        // Geo — Idox scraper doesn't return coords, fall back to city centre
+        const cityName=app.council||'';
         let matchedCity=null;
         for(const city of Object.keys(CITY_COORDS)){
-          if(authorityStr.includes(city.toLowerCase())){matchedCity=city;break;}
+          if(cityName.toLowerCase().includes(city.toLowerCase())||
+             (app.address||'').toLowerCase().includes(city.toLowerCase())){
+            matchedCity=city;break;
+          }
         }
-        if((isNaN(lat)||isNaN(lng))&&matchedCity){
+        let lat=null,lng=null;
+        if(matchedCity){
           const cc=CITY_COORDS[matchedCity];
           lat=cc.lat+(Math.random()-0.5)*0.06;
           lng=cc.lng+(Math.random()-0.5)*0.08;
         }
 
-        const m=(app.description||'').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
-        const u=m?parseInt(m[1]):null;
-        if(u!==null&&u<50)continue;
-
         const item={
-          id:'p_'+(app.uid||app.name||Math.random().toString(36).substr(2,8)),
-          _tab:'pipeline',title,
-          org:app.area_name||'',
+          id:'p_'+(app.keyVal||app.reference||Math.random().toString(36).substr(2,8)),
+          _tab:'pipeline',
+          title,
+          org:app.council||'',
           location:app.address||'',
-          description:app.description||'',
-          status:app.app_state||'',
-          reference:app.uid||app.name||'',
-          published:app.start_date||'',
+          description:desc,
+          status:app.status||'',
+          reference:app.reference||'',
+          published:app.validDate||'',
           units:u?String(u):null,
-          url:app.link?`https://www.planit.org.uk${app.link}`:'',
-          lat:isNaN(lat)?null:lat,
-          lng:isNaN(lng)?null:lng,
+          url:app.url||'',
+          lat,lng,
           city:matchedCity,isRegen,
         };
         item.region=detectRegion(item);
-        item._stage=detectStage(`${item.description} ${item.title} ${item.reference}`);
+        item._stage=detectStage(`${desc} ${title} ${app.reference||''}`);
         items.push(item);
       }
     }
-  }catch(e){console.error('PlanIt:',e);}
+  }catch(e){console.error('Idox scraper:',e);}
   // London PLD
   try{
     const res=await fetch('/api/london');
