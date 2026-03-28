@@ -5,55 +5,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Developer Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg:#faf9f7;--surface:#f3f1ed;--surface2:#e8e4de;
-    --border:#d4cfc8;--border-dim:#e0dcd6;
-    --text:#1c1a18;--text-muted:#4a4540;--text-dim:#9a948e;
-    --procurement:#8b1a0a;--procurement-bg:#fdf0ee;--procurement-border:#e0b0a8;
-    --pipeline:#1a4e90;--pipeline-bg:#eef2fa;--pipeline-border:#a8c0e0;
-    --land:#1a6038;--land-bg:#eef6f0;--land-border:#a0ccb0;
-    --serif:'Playfair Display',Georgia,serif;
-    --serif-body:'Source Serif 4',Georgia,serif;
-    --sans:'Source Sans 3',system-ui,sans-serif;
+    /* The Developer colours */
+    --amber:        #e8b84b;   /* brand amber — header bg */
+    --amber-dark:   #c9952a;   /* hover/border amber */
+    --amber-light:  #f5d98a;   /* light amber tint */
+    --cream:        #f0ede4;   /* page background */
+    --cream-dark:   #e6e1d6;   /* surface / card hover */
+    --cream-darker: #d8d2c5;   /* border */
+    --ink:          #1a1814;   /* primary type — near black */
+    --ink-mid:      #3a3530;   /* secondary type */
+    --ink-light:    #6a6560;   /* tertiary / muted */
+    --ink-dim:      #9a948e;   /* very muted */
+    --red:          #c8301c;   /* accent — "festival of place" red */
+
+    /* Status colours */
+    --procurement:  #c8301c;   /* red for procurement = urgent/action */
+    --pipeline:     #1a4e90;
+    --land:         #1a5c35;
+
+    /* Type — Observer style */
+    --serif:        'Spectral', Georgia, serif;   /* headlines */
+    --serif-body:   'Lora', Georgia, serif;               /* body/desc */
+    --sans:         'Inter', system-ui, sans-serif;       /* UI */
+
+    /* Spacing */
+    --bg:       var(--cream);
+    --surface:  var(--cream-dark);
+    --surface2: var(--cream-darker);
+    --border:   var(--cream-darker);
+    --border-dim: #e4dfd6;
+    --text:     var(--ink);
+    --text-muted: var(--ink-mid);
+    --text-dim:   var(--ink-light);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
   body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 
   /* HEADER */
-  header{background:var(--text);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;height:56px;}
-  .logo{font-family:var(--serif);font-size:1.1rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:0.75rem;}
-  .logo-divider{color:var(--procurement);opacity:0.7;}
-  .logo-sub{font-family:var(--sans);font-size:0.72rem;font-weight:400;color:rgba(255,255,255,0.45);letter-spacing:0.06em;text-transform:uppercase;}
+  header{background:var(--amber);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;height:58px;border-bottom:2px solid var(--amber-dark);}
+  .logo{font-family:var(--serif);font-size:1.25rem;font-weight:300;color:var(--ink);display:flex;align-items:center;gap:0.75rem;letter-spacing:0.01em;}
+  .logo-divider{color:var(--ink);opacity:0.25;font-weight:300;}
+  .logo-sub{font-family:var(--sans);font-size:0.7rem;font-weight:500;color:var(--ink-mid);letter-spacing:0.08em;text-transform:uppercase;}
   .header-right{display:flex;align-items:center;gap:1.5rem;}
-  .live-badge{display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;text-transform:uppercase;}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade8080;animation:pulse 2s ease-in-out infinite;}
+  .live-badge{display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;color:var(--ink-mid);letter-spacing:0.05em;text-transform:uppercase;font-family:var(--sans);}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:#2d8a2d;box-shadow:0 0 5px #2d8a2d80;animation:pulse 2s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-  .header-date{font-size:0.7rem;color:rgba(255,255,255,0.35);letter-spacing:0.04em;}
+  .header-date{font-size:0.7rem;color:var(--ink-light);letter-spacing:0.04em;font-family:var(--sans);}
 
   /* MAP */
   #map{height:340px;width:100%;background:#e8e4de;border-bottom:1px solid var(--border);}
 
   /* TABS */
-  .tabs-bar{background:var(--text);display:flex;align-items:stretch;position:sticky;top:56px;z-index:900;}
-  .tab-btn{padding:0 1.75rem;height:48px;display:flex;align-items:center;gap:0.6rem;font-family:var(--sans);font-size:0.88rem;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:color 0.15s,border-color 0.15s;white-space:nowrap;}
+  .tabs-bar{background:var(--ink);display:flex;align-items:stretch;position:sticky;top:58px;z-index:900;}
+  .tab-btn{padding:0 1.75rem;height:46px;display:flex;align-items:center;gap:0.6rem;font-family:var(--sans);font-size:0.85rem;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:color 0.15s,border-color 0.15s;white-space:nowrap;letter-spacing:0.01em;}
   .tab-btn:hover{color:rgba(255,255,255,0.8);}
   .tab-btn.active{color:#fff;}
-  .tab-btn.active.tab-procurement{border-bottom-color:var(--procurement);}
-  .tab-btn.active.tab-pipeline{border-bottom-color:#60a5fa;}
-  .tab-btn.active.tab-land{border-bottom-color:#4ade80;}
-  .tab-count{font-size:0.7rem;padding:0.1rem 0.45rem;border-radius:10px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);min-width:1.6rem;text-align:center;}
+  .tab-btn.active.tab-procurement{border-bottom-color:var(--amber);}
+  .tab-btn.active.tab-pipeline{border-bottom-color:#7eb3f5;}
+  .tab-btn.active.tab-land{border-bottom-color:#6dcc8a;}
+  .tab-count{font-size:0.68rem;padding:0.1rem 0.45rem;border-radius:10px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);min-width:1.6rem;text-align:center;}
   .tab-btn.active .tab-count{background:rgba(255,255,255,0.18);color:#fff;}
 
   /* FILTER BAR */
-  .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0.8rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  .filter-bar{background:var(--cream-dark);border-bottom:2px solid var(--cream-darker);padding:0.85rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
   .search-wrap{flex:1;min-width:240px;position:relative;display:flex;align-items:center;}
   .search-icon{position:absolute;left:0.75rem;font-size:1.05rem;color:var(--text-dim);pointer-events:none;top:50%;transform:translateY(-50%);}
-  .search-input{width:100%;padding:0.6rem 2.4rem 0.6rem 2.4rem;background:var(--bg);border:1.5px solid var(--border);color:var(--text);font-family:var(--sans);font-size:0.92rem;outline:none;transition:border-color 0.15s;}
+  .search-input{width:100%;padding:0.6rem 2.4rem 0.6rem 2.4rem;background:var(--cream);border:1.5px solid var(--cream-darker);color:var(--ink);font-family:var(--sans);font-size:0.92rem;outline:none;transition:border-color 0.15s;}
   .search-input:focus{border-color:var(--text);}
   .search-input::placeholder{color:var(--text-dim);}
   .search-clear{position:absolute;right:0.6rem;background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.8rem;display:none;padding:0.2rem;}
@@ -62,7 +85,7 @@
   .filter-label{font-size:0.78rem;font-weight:500;color:var(--text-muted);white-space:nowrap;}
   .chip{font-family:var(--sans);font-size:0.8rem;padding:0.28rem 0.8rem;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;transition:all 0.12s;white-space:nowrap;}
   .chip:hover{border-color:var(--text-muted);color:var(--text);}
-  .chip.active{background:var(--text);color:#fff;border-color:var(--text);}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
   .filter-select{font-family:var(--sans);font-size:0.82rem;padding:0.3rem 2rem 0.3rem 0.7rem;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a4540'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:8px;outline:none;min-width:140px;}
   .filter-select:focus{border-color:var(--text);}
   .results-meta{margin-left:auto;font-size:0.8rem;color:var(--text-dim);white-space:nowrap;}
@@ -80,31 +103,32 @@
 
   /* PROCUREMENT CARDS */
   .proc-card{display:grid;grid-template-columns:4px 1fr auto;gap:0 1.5rem;padding:1.6rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;align-items:start;}
-  .proc-card:hover{background:var(--surface);}
-  .proc-stripe{background:var(--procurement);}
-  .proc-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--procurement);margin-bottom:0.4rem;display:flex;align-items:center;gap:0.6rem;}
-  .regen-pill{background:#fefce8;border:1px solid #fde68a;color:#854d0e;font-size:0.67rem;padding:0.1rem 0.45rem;font-weight:600;}
-  .proc-title{font-family:var(--serif);font-size:1.1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.3rem;}
-  .proc-org{font-size:0.88rem;color:var(--text-muted);margin-bottom:0.55rem;}
-  .proc-desc{font-family:var(--serif-body);font-size:0.92rem;color:var(--text-muted);line-height:1.65;margin-bottom:0.7rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .proc-card:hover{background:var(--cream-dark);}
+  .proc-stripe{background:var(--red);}
+  .proc-eyebrow{font-family:var(--sans);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--procurement);margin-bottom:0.45rem;display:flex;align-items:center;gap:0.6rem;}
+  .regen-pill{background:var(--amber-light);border:1px solid var(--amber);color:var(--ink-mid);font-size:0.65rem;padding:0.1rem 0.5rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;}
+  .proc-title{font-family:var(--serif);font-size:1.25rem;font-weight:400;line-height:1.3;color:var(--ink);margin-bottom:0.3rem;letter-spacing:0em;}
+  .proc-org{font-family:var(--sans);font-size:0.85rem;color:var(--ink-mid);margin-bottom:0.55rem;font-weight:400;}
+  .proc-desc{font-family:var(--serif-body);font-size:0.95rem;color:var(--ink-mid);line-height:1.7;margin-bottom:0.7rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .proc-tags{display:flex;gap:0.5rem;flex-wrap:wrap;}
-  .proc-tag{font-size:0.72rem;font-weight:500;padding:0.18rem 0.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);}
+  .proc-tag{font-family:var(--sans);font-size:0.72rem;font-weight:500;padding:0.2rem 0.65rem;background:var(--cream);border:1px solid var(--cream-darker);color:var(--ink-light);}
+  .proc-tag-prof{background:rgba(232,184,75,0.15);border-color:var(--amber);color:var(--ink-mid);font-weight:600;}
   .proc-deadline{text-align:right;flex-shrink:0;padding-top:0.1rem;min-width:110px;}
   .deadline-label{font-size:0.67rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);margin-bottom:0.2rem;}
-  .deadline-date{font-family:var(--serif);font-size:1rem;font-weight:600;color:var(--text);line-height:1.2;margin-bottom:0.3rem;}
+  .deadline-date{font-family:var(--serif);font-size:1rem;font-weight:400;color:var(--ink);line-height:1.2;margin-bottom:0.3rem;}
   .deadline-cd{font-size:0.78rem;font-weight:600;padding:0.15rem 0.5rem;display:inline-block;}
   .deadline-cd.urgent{background:#fef2f2;color:#b91c1c;}
   .deadline-cd.soon{background:#fffbeb;color:#92400e;}
-  .deadline-cd.ok{background:#f0fdf4;color:#166534;}
+  .deadline-cd.ok{background:rgba(232,184,75,0.15);color:#7a5c10;}
   .deadline-cd.none{color:var(--text-dim);background:none;font-weight:400;font-size:0.75rem;}
 
   /* PIPELINE CARDS */
   .pipe-card{display:grid;grid-template-columns:4px 1fr;gap:0 1.5rem;padding:1.4rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;}
-  .pipe-card:hover{background:var(--surface);}
+  .pipe-card:hover{background:var(--cream-dark);}
   .pipe-stripe{background:var(--pipeline);}
   .pipe-stripe.london{background:#6a3090;}
   .pipe-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.3rem;}
-  .pipe-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--pipeline);}
+  .pipe-eyebrow{font-family:var(--sans);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--pipeline);}
   .pipe-eyebrow.london{color:#6a3090;}
   .pipe-stage{font-size:0.7rem;font-weight:600;padding:0.15rem 0.55rem;white-space:nowrap;flex-shrink:0;}
   .pipe-stage.outline{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
@@ -112,9 +136,9 @@
   .pipe-stage.full{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
   .pipe-stage.prior{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}
   .pipe-stage.unknown{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}
-  .pipe-title{font-family:var(--serif);font-size:1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.2rem;}
-  .pipe-org{font-size:0.85rem;color:var(--text-muted);margin-bottom:0.45rem;}
-  .pipe-desc{font-family:var(--serif-body);font-size:0.9rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.6rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .pipe-title{font-family:var(--serif);font-size:1.15rem;font-weight:400;line-height:1.3;color:var(--ink);margin-bottom:0.2rem;}
+  .pipe-org{font-family:var(--sans);font-size:0.85rem;color:var(--ink-mid);margin-bottom:0.45rem;}
+  .pipe-desc{font-family:var(--serif-body);font-size:0.92rem;color:var(--ink-mid);line-height:1.7;margin-bottom:0.6rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   .pipe-meta{display:flex;gap:0.85rem;flex-wrap:wrap;align-items:center;}
   .scale-badge{font-size:0.75rem;font-weight:600;padding:0.18rem 0.6rem;}
   .scale-badge.xl{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;}
@@ -124,7 +148,7 @@
 
   /* LAND CARDS */
   .land-card{display:grid;grid-template-columns:4px 1fr;gap:0 1.5rem;padding:1.4rem 2rem;border-bottom:1px solid var(--border-dim);cursor:pointer;transition:background 0.12s;}
-  .land-card:hover{background:var(--surface);}
+  .land-card:hover{background:var(--cream-dark);}
   .land-stripe{background:var(--land);}
   .land-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.25rem;}
   .land-eyebrow{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--land);}
@@ -132,29 +156,29 @@
   .land-perm.no{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;}
   .land-perm.pending{background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
   .land-perm.yes{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;}
-  .land-address{font-family:var(--serif);font-size:1rem;font-weight:600;line-height:1.3;color:var(--text);margin-bottom:0.2rem;}
-  .land-lpa{font-size:0.85rem;color:var(--text-muted);margin-bottom:0.4rem;}
-  .land-notes{font-family:var(--serif-body);font-size:0.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.6rem;font-style:italic;}
+  .land-address{font-family:var(--serif);font-size:1.15rem;font-weight:400;line-height:1.3;color:var(--ink);margin-bottom:0.2rem;}
+  .land-lpa{font-family:var(--sans);font-size:0.85rem;color:var(--ink-mid);margin-bottom:0.4rem;}
+  .land-notes{font-family:var(--serif-body);font-size:0.9rem;color:var(--ink-mid);line-height:1.7;margin-bottom:0.6rem;font-style:italic;}
   .land-meta{display:flex;gap:1.25rem;flex-wrap:wrap;align-items:flex-end;}
   .land-stat{display:flex;flex-direction:column;gap:0.05rem;}
-  .land-stat-num{font-family:var(--serif);font-size:1.4rem;font-weight:700;line-height:1;}
-  .land-stat-num.homes{color:var(--land);}
+  .land-stat-num{font-family:var(--serif);font-size:1.4rem;font-weight:400;line-height:1;}
+  .land-stat-num.homes{color:var(--ink);}
   .land-stat-num.ha{color:var(--text-muted);font-size:1.1rem;}
   .land-stat-label{font-size:0.67rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);}
 
   /* DETAIL PANEL */
   .detail-overlay{position:fixed;top:0;right:-500px;width:500px;height:100vh;background:var(--bg);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,0.08);z-index:2000;overflow-y:auto;transition:right 0.25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
   .detail-overlay.open{right:0;}
-  .detail-header{padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;}
+  .detail-header{padding:1.5rem 1.5rem 1.25rem;border-bottom:2px solid var(--cream-darker);background:var(--cream-dark);position:sticky;top:0;}
   .detail-close{font-size:0.8rem;font-weight:500;color:var(--text-dim);background:none;border:none;cursor:pointer;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.3rem;letter-spacing:0.02em;}
   .detail-close:hover{color:var(--text);}
   .detail-type{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
-  .detail-title{font-family:var(--serif);font-size:1.2rem;font-weight:600;line-height:1.3;color:var(--text);}
+  .detail-title{font-family:var(--serif);font-size:1.3rem;font-weight:400;line-height:1.3;color:var(--ink);}
   .detail-body{padding:1.5rem;flex:1;}
   .detail-field{margin-bottom:0.9rem;}
-  .detail-field-label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-dim);margin-bottom:0.2rem;}
-  .detail-field-value{font-family:var(--serif-body);font-size:0.95rem;line-height:1.7;color:var(--text-muted);}
-  .detail-link{display:inline-block;margin-top:1.25rem;font-size:0.9rem;font-weight:600;color:var(--procurement);text-decoration:none;border-bottom:1.5px solid var(--procurement-border);padding-bottom:0.1rem;}
+  .detail-field-label{font-family:var(--sans);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink-light);margin-bottom:0.25rem;}
+  .detail-field-value{font-family:var(--serif-body);font-size:0.95rem;line-height:1.75;color:var(--ink-mid);}
+  .detail-link{display:inline-block;margin-top:1.25rem;font-family:var(--sans);font-size:0.88rem;font-weight:600;color:var(--red);text-decoration:none;border-bottom:1.5px solid rgba(200,48,28,0.3);padding-bottom:0.1rem;}
   .detail-link:hover{border-color:var(--procurement);}
 
   @media(max-width:700px){
@@ -166,9 +190,272 @@
     header{padding:0 1rem;}
     .logo-sub{display:none;}
   }
+
+  /* ── INTRO STRIP ─────────────────────────────────── */
+  .intro-strip {
+    background: var(--ink);
+    color: rgba(255,255,255,0.88);
+    padding: 0.9rem 2rem;
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+    border-bottom: 2px solid var(--amber);
+    flex-wrap: wrap;
+  }
+  .intro-text {
+    font-family: var(--serif-body);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    flex: 1;
+    min-width: 280px;
+  }
+  .intro-text strong {
+    color: #fff;
+    font-weight: 600;
+  }
+  .intro-urgent {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--amber);
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .intro-urgent-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--amber);
+    animation: pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .tour-trigger {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 0.3rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .tour-trigger:hover {
+    color: rgba(255,255,255,0.85);
+    border-color: rgba(255,255,255,0.35);
+  }
+
+  /* ── TOUR OVERLAY ────────────────────────────────── */
+  .tour-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.55);
+    z-index: 3000;
+    backdrop-filter: blur(1px);
+  }
+  .tour-backdrop.active { display: block; }
+
+  .tour-tooltip {
+    position: fixed;
+    z-index: 3100;
+    background: var(--ink);
+    color: #fff;
+    width: 320px;
+    padding: 1.4rem 1.5rem 1.25rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    display: none;
+    border-top: 3px solid var(--amber);
+  }
+  .tour-tooltip.active { display: block; }
+
+  .tour-step-label {
+    font-family: var(--sans);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--amber);
+    margin-bottom: 0.5rem;
+  }
+  .tour-tooltip h3 {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1.3;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .tour-tooltip p {
+    font-family: var(--serif-body);
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 1.1rem;
+  }
+  .tour-tooltip p strong { color: rgba(255,255,255,0.95); font-style: italic; font-weight: 400; }
+  .tour-arrow {
+    position: absolute;
+    width: 0; height: 0;
+  }
+  .tour-arrow.down {
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--ink);
+    bottom: -8px; left: 24px;
+  }
+  .tour-arrow.up {
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--amber);
+    top: -11px; left: 24px;
+  }
+  .tour-arrow.right {
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--ink);
+    right: -8px; top: 24px;
+  }
+  .tour-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tour-dots {
+    display: flex; gap: 5px;
+  }
+  .tour-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.2s;
+  }
+  .tour-dot.active { background: var(--amber); }
+  .tour-nav {
+    display: flex; gap: 0.5rem;
+  }
+  .tour-btn {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.3rem 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.12s;
+    letter-spacing: 0.02em;
+  }
+  .tour-btn-skip {
+    background: none;
+    color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .tour-btn-skip:hover { color: rgba(255,255,255,0.65); }
+  .tour-btn-next {
+    background: var(--amber);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .tour-btn-next:hover { background: var(--amber-dark); }
+
+  /* Highlight ring for tour targets */
+  .tour-highlight {
+    outline: 3px solid var(--amber) !important;
+    outline-offset: 3px !important;
+    position: relative;
+    z-index: 3050;
+    border-radius: 2px;
+  }
 </style>
 </head>
 <body>
+
+
+<!-- INTRO STRIP -->
+<div class="intro-strip">
+  <div class="intro-text">
+    <strong>The Developer Intelligence</strong> tracks UK regeneration opportunities at the earliest public stage —
+    before teams are appointed and before sites are optioned.
+    Built for architects, developers and placemakers who want to find work and land before the competition does.
+  </div>
+  <div class="intro-urgent" id="urgency-count">
+    <div class="intro-urgent-dot"></div>
+    <span id="urgency-text">Loading live opportunities…</span>
+  </div>
+  <button class="tour-trigger" onclick="startTour()">How to use this ↗</button>
+</div>
+
+<!-- TOUR BACKDROP -->
+<div class="tour-backdrop" id="tour-backdrop" onclick="endTour()"></div>
+
+<!-- TOUR TOOLTIPS -->
+<div class="tour-tooltip" id="tour-tip-0">
+  <div class="tour-arrow up"></div>
+  <div class="tour-step-label">Step 1 of 4</div>
+  <h3>Find live briefs before they close</h3>
+  <p>The <strong>Procurement Notices</strong> tab shows councils and public bodies actively seeking architects, masterplanners and development partners. Notices are sorted by deadline — <strong>the most urgent at the top.</strong></p>
+  <div class="tour-footer">
+    <div class="tour-dots">
+      <div class="tour-dot active"></div><div class="tour-dot"></div><div class="tour-dot"></div><div class="tour-dot"></div>
+    </div>
+    <div class="tour-nav">
+      <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip</button>
+      <button class="tour-btn tour-btn-next" onclick="nextStep(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div class="tour-tooltip" id="tour-tip-1">
+  <div class="tour-arrow up"></div>
+  <div class="tour-step-label">Step 2 of 4</div>
+  <h3>Track major applications by stage</h3>
+  <p>The <strong>Planning Pipeline</strong> tab surfaces large-scale applications — 50+ homes — across England. Outline permissions come first: <strong>a site with outline planning but no reserved matters means a developer needs an architect.</strong></p>
+  <div class="tour-footer">
+    <div class="tour-dots">
+      <div class="tour-dot"></div><div class="tour-dot active"></div><div class="tour-dot"></div><div class="tour-dot"></div>
+    </div>
+    <div class="tour-nav">
+      <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip</button>
+      <button class="tour-btn tour-btn-next" onclick="nextStep(2)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div class="tour-tooltip" id="tour-tip-2">
+  <div class="tour-arrow up"></div>
+  <div class="tour-step-label">Step 3 of 4</div>
+  <h3>Find sites with no developer yet</h3>
+  <p>The <strong>Brownfield Land</strong> tab shows allocated sites from England's official register. <strong>Sites marked "No Permission Yet" are the most speculative</strong> — land the council wants developed but no one has optioned.</p>
+  <div class="tour-footer">
+    <div class="tour-dots">
+      <div class="tour-dot"></div><div class="tour-dot"></div><div class="tour-dot active"></div><div class="tour-dot"></div>
+    </div>
+    <div class="tour-nav">
+      <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip</button>
+      <button class="tour-btn tour-btn-next" onclick="nextStep(3)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div class="tour-tooltip" id="tour-tip-3">
+  <div class="tour-arrow up"></div>
+  <div class="tour-step-label">Step 4 of 4</div>
+  <h3>Search and filter by what matters to you</h3>
+  <p>Use the search bar to find opportunities by location, authority or keyword — try <strong>"masterplan"</strong>, <strong>"Southwark"</strong> or <strong>"outline"</strong>. Filter by region and scale. Click any result to see full details and zoom the map.</p>
+  <div class="tour-footer">
+    <div class="tour-dots">
+      <div class="tour-dot"></div><div class="tour-dot"></div><div class="tour-dot"></div><div class="tour-dot active"></div>
+    </div>
+    <div class="tour-nav">
+      <button class="tour-btn tour-btn-next" onclick="endTour()">Got it ✓</button>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="logo">
@@ -210,6 +497,16 @@
       <option value="all">All regions</option>
     </select>
   </div>
+  <div class="filter-group" id="profession-group" style="display:none;">
+    <span class="filter-label">Seeking</span>
+    <button class="chip active" data-prof="all"         onclick="setProf('all')">All</button>
+    <button class="chip"        data-prof="architect"   onclick="setProf('architect')">Architect</button>
+    <button class="chip"        data-prof="landscape"   onclick="setProf('landscape')">Landscape Architect</button>
+    <button class="chip"        data-prof="masterplan"  onclick="setProf('masterplan')">Masterplanner</button>
+    <button class="chip"        data-prof="urban"       onclick="setProf('urban')">Urban Designer</button>
+    <button class="chip"        data-prof="developer"   onclick="setProf('developer')">Developer / Partner</button>
+    <button class="chip"        data-prof="consultant"  onclick="setProf('consultant')">Planning Consultant</button>
+  </div>
   <div class="filter-group" id="scale-group">
     <span class="filter-label">Scale</span>
     <button class="chip active" data-scale="all"  onclick="setScale('all')">Any</button>
@@ -242,7 +539,7 @@
 <script>
 // STATE
 let allProcurement=[], allPipeline=[], allLand=[];
-let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all';
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all';
 let map, markerLayer;
 
 const CITY_COORDS={
@@ -287,6 +584,57 @@ function detectStage(text){
   if(t.includes('full planning')||t.includes('full application')||/\/ful|_ful/i.test(t))return{label:'Full Permission',cls:'full'};
   return{label:'Application',cls:'unknown'};
 }
+// ── PROFESSION DETECTION ──────────────────────────────────────────────────
+function detectProfession(item) {
+  const t = `${item.title} ${item.description}`.toLowerCase();
+
+  // Order matters — more specific first
+  if (t.includes('landscape architect') || t.includes('landscape design') ||
+      t.includes('landscape consultant') || t.includes('landscape and public realm'))
+    return 'landscape';
+
+  if (t.includes('masterplan') || t.includes('master plan') ||
+      t.includes('masterplanner') || t.includes('masterplanning'))
+    return 'masterplan';
+
+  if (t.includes('urban design') || t.includes('urban designer') ||
+      t.includes('placemaking') || t.includes('place-making') ||
+      t.includes('public realm design'))
+    return 'urban';
+
+  if (t.includes('development partner') || t.includes('development management') ||
+      t.includes('joint venture') || t.includes('developer') ||
+      t.includes('development agreement') || t.includes('land disposal') ||
+      t.includes('housing association') || t.includes('registered provider') ||
+      t.includes('build to rent') || t.includes('build-to-rent'))
+    return 'developer';
+
+  if (t.includes('planning consultant') || t.includes('planning consultancy') ||
+      t.includes('planning advisor') || t.includes('planning services') ||
+      t.includes('planning support') || t.includes('planning framework') ||
+      t.includes('local plan') || t.includes('planning policy'))
+    return 'consultant';
+
+  if (t.includes('architect') || t.includes('architectural') ||
+      t.includes('design team') || t.includes('design service') ||
+      t.includes('building design') || t.includes('feasibility') ||
+      t.includes('outline design') || t.includes('riba') ||
+      t.includes('planning application') || t.includes('design and build'))
+    return 'architect';
+
+  return 'other';
+}
+
+const PROF_LABELS = {
+  architect:  'Architect',
+  landscape:  'Landscape Architect',
+  masterplan: 'Masterplanner',
+  urban:      'Urban Designer',
+  developer:  'Developer / Partner',
+  consultant: 'Planning Consultant',
+  other:      'Other',
+};
+
 
 function daysUntil(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return null;return Math.ceil((d-Date.now())/86400000);}
 function fmtDate(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return ds;return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
@@ -340,6 +688,11 @@ function switchTab(tab){
   document.querySelector(`.tab-${tab}`).classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(`panel-${tab}`).classList.add('active');
+  // Show profession filter only on procurement tab; scale filter only on pipeline/land
+  const profGroup  = document.getElementById('profession-group');
+  const scaleGroup = document.getElementById('scale-group');
+  if (profGroup)  profGroup.style.display  = tab === 'procurement' ? 'flex' : 'none';
+  if (scaleGroup) scaleGroup.style.display = tab === 'procurement' ? 'none' : 'flex';
   renderCurrentTab();
 }
 
@@ -357,6 +710,9 @@ function getItems(){
       if(scaleFilter==='50'&&!(u>=50&&u<200))return false;
       if(scaleFilter==='200'&&!(u>=200&&u<500))return false;
       if(scaleFilter==='500'&&u<500)return false;
+    }
+    if(profFilter!=='all'&&currentTab==='procurement'){
+      if(item.profession!==profFilter)return false;
     }
     return true;
   });
@@ -376,6 +732,11 @@ function clearSearch(){
 function setScale(s){
   scaleFilter=s;
   document.querySelectorAll('[data-scale]').forEach(b=>b.classList.toggle('active',b.dataset.scale===s));
+  renderCurrentTab();
+}
+function setProf(p){
+  profFilter=p;
+  document.querySelectorAll('[data-prof]').forEach(b=>b.classList.toggle('active',b.dataset.prof===p));
   renderCurrentTab();
 }
 
@@ -406,6 +767,7 @@ function renderProcurement(items){
         <div class="proc-org">${escHtml(item.org)}${item.location?' · '+escHtml(item.location):''}</div>
         ${item.description?`<div class="proc-desc">${escHtml(item.description)}</div>`:''}
         <div class="proc-tags">
+          ${item.profession&&item.profession!=='other'?`<span class="proc-tag proc-tag-prof">${escHtml(PROF_LABELS[item.profession]||item.profession)}</span>`:''}
           ${item.value?`<span class="proc-tag">${escHtml(item.value)}</span>`:''}
           ${item.region?`<span class="proc-tag">${escHtml(item.region)}</span>`:''}
           ${item.published?`<span class="proc-tag">Published ${escHtml(item.published)}</span>`:''}
@@ -567,6 +929,7 @@ async function fetchTenders(){
         lat,lng,city:matchedCity,isRegen,
       };
       item.region=detectRegion(item);
+      item.profession=detectProfession(item);
       items.push(item);
     }
     return items;
@@ -683,6 +1046,89 @@ function updateCounts(){
   document.getElementById('cnt-land').textContent=allLand.length;
 }
 
+
+
+// ── TOUR ──────────────────────────────────────────────────────────────────
+const TOUR_TARGETS = [
+  { tipId: 'tour-tip-0', targetSel: '.tab-btn.tab-procurement', tab: 'procurement' },
+  { tipId: 'tour-tip-1', targetSel: '.tab-btn.tab-pipeline',    tab: 'pipeline' },
+  { tipId: 'tour-tip-2', targetSel: '.tab-btn.tab-land',        tab: 'land' },
+  { tipId: 'tour-tip-3', targetSel: '.search-wrap',             tab: null },
+];
+let tourStep = 0;
+let tourHighlighted = null;
+
+function startTour() {
+  tourStep = 0;
+  document.getElementById('tour-backdrop').classList.add('active');
+  showTourStep(0);
+}
+
+function showTourStep(step) {
+  // Hide all tooltips
+  document.querySelectorAll('.tour-tooltip').forEach(t => t.classList.remove('active'));
+  // Remove previous highlight
+  if (tourHighlighted) { tourHighlighted.classList.remove('tour-highlight'); tourHighlighted = null; }
+
+  const s = TOUR_TARGETS[step];
+  const tip = document.getElementById(s.tipId);
+  const target = document.querySelector(s.targetSel);
+
+  // Switch to relevant tab if needed
+  if (s.tab) switchTab(s.tab);
+
+  if (target) {
+    tourHighlighted = target;
+    target.classList.add('tour-highlight');
+    const rect = target.getBoundingClientRect();
+    // Position tooltip below target
+    tip.style.top  = (rect.bottom + window.scrollY + 14) + 'px';
+    tip.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 340) + 'px';
+  }
+  tip.classList.add('active');
+  tourStep = step;
+}
+
+function nextStep(step) {
+  if (step >= TOUR_TARGETS.length) { endTour(); return; }
+  showTourStep(step);
+}
+
+function endTour() {
+  document.getElementById('tour-backdrop').classList.remove('active');
+  document.querySelectorAll('.tour-tooltip').forEach(t => t.classList.remove('active'));
+  if (tourHighlighted) { tourHighlighted.classList.remove('tour-highlight'); tourHighlighted = null; }
+  // Switch back to procurement tab
+  switchTab('procurement');
+  // Store in localStorage so we don't auto-show again
+  try { localStorage.setItem('tdi_tour_done', '1'); } catch(e) {}
+}
+
+// Auto-start tour on first visit
+window.addEventListener('load', () => {
+  try {
+    if (!localStorage.getItem('tdi_tour_done')) {
+      setTimeout(startTour, 1200);
+    }
+  } catch(e) {}
+});
+
+// ── URGENCY COUNT (update after data loads) ────────────────────────────────
+function updateUrgency() {
+  const closing = allProcurement.filter(i => {
+    const d = daysUntil(i._deadlineRaw);
+    return d !== null && d >= 0 && d <= 14;
+  }).length;
+  const totalLive = allProcurement.length + allPipeline.length + allLand.length;
+  const el = document.getElementById('urgency-text');
+  if (!el) return;
+  if (closing > 0) {
+    el.textContent = `${closing} notice${closing !== 1 ? 's' : ''} closing within 14 days`;
+  } else {
+    el.textContent = `${totalLive} live opportunities across England`;
+  }
+}
+
 // INIT
 async function init(){
   initMap();
@@ -694,6 +1140,7 @@ async function init(){
   updateCounts();
   populateRegions();
   renderCurrentTab();
+  updateUrgency();
 }
 init();
 </script>
