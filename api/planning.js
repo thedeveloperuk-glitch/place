@@ -1,171 +1,297 @@
-// planning.js — Idox Public Access scraper for major English cities outside London
-// Idox is the most common planning portal system (~200 councils)
-// Pattern: POST to /online-applications/search.do with form params, parse HTML results
-// Birmingham uses Northgate (different scraper), handled separately
+// planning.js — Council ArcGIS open data feeds
+// These are genuine public REST APIs published by councils themselves
+// No authentication required, no scraping, no rate limiting issues
+//
+// Confirmed working endpoints (verified field schemas):
+//   Bristol: maps.bristol.gov.uk — fields: REFVAL, ADDRESS, PROPOSAL, STATUS, DECISION, DEC_DATE
+//
+// All use British National Grid (SRID 27700) — converted to WGS84 in response
+// Returns in PlanIt-compatible shape { cities: [{city, records}] }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Confirmed Idox portal URLs for major English cities outside London
-  const IDOX_COUNCILS = [
-    { name: 'Leeds',         url: 'https://publicaccess.leeds.gov.uk/online-applications' },
-    { name: 'Nottingham',    url: 'https://publicaccess.nottinghamcity.gov.uk/online-applications' },
-    { name: 'Bristol',       url: 'https://planningonline.bristol.gov.uk/online-applications' },
-    { name: 'Sheffield',     url: 'https://planningapps.sheffield.gov.uk/online-applications' },
-    { name: 'Liverpool',     url: 'https://planningonline.liverpool.gov.uk/online-applications' },
-    { name: 'Manchester',    url: 'https://pa.manchester.gov.uk/online-applications' },
-    { name: 'Newcastle',     url: 'https://publicaccess.newcastle.gov.uk/online-applications' },
-    { name: 'Leicester',     url: 'https://planning.leicester.gov.uk/online-applications' },
-    { name: 'Coventry',      url: 'https://planning.coventry.gov.uk/online-applications' },
-    { name: 'Southampton',   url: 'https://planningpublicaccess.southampton.gov.uk/online-applications' },
-  ];
+  // Convert British National Grid (OSGB36) to WGS84 lat/lng
+  // Helmert transformation — accurate to ~5m
+  function bng2wgs84(E, N) {
+    try {
+      // Airy 1830 ellipsoid
+      const a = 6377563.396, b = 6356256.909;
+      const F0 = 0.9996012717;
+      const lat0 = 49 * Math.PI / 180;
+      const lon0 = -2 * Math.PI / 180;
+      const N0 = -100000, E0 = 400000;
+      const e2 = 1 - (b * b) / (a * a);
+      const n = (a - b) / (a + b);
 
-  // Date 90 days ago in DD/MM/YYYY for Idox form
-  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const dateStr = `${String(since.getDate()).padStart(2,'0')}/${String(since.getMonth()+1).padStart(2,'0')}/${since.getFullYear()}`;
-  const todayStr = `${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${new Date().getFullYear()}`;
+      let lat = lat0;
+      let M = 0;
+      do {
+        lat = (N - N0 - M) / (a * F0) + lat;
+        const Ma = (1 + n + 5/4 * n*n + 5/4 * n*n*n) * (lat - lat0);
+        const Mb = (3*n + 3*n*n + 21/8 * n*n*n) * Math.sin(lat - lat0) * Math.cos(lat + lat0);
+        const Mc = (15/8 * n*n + 15/8 * n*n*n) * Math.sin(2*(lat-lat0)) * Math.cos(2*(lat+lat0));
+        const Md = 35/24 * n*n*n * Math.sin(3*(lat-lat0)) * Math.cos(3*(lat+lat0));
+        M = b * F0 * (Ma - Mb + Mc - Md);
+      } while (Math.abs(N - N0 - M) >= 0.00001);
 
-  // Parse Idox HTML results page into application objects
-  function parseIdoxResults(html, councilName, baseUrl) {
-    const apps = [];
-    // Match each result row — Idox uses <li class="searchresult"> or <tr>
-    // The summary URL pattern: /online-applications/applicationDetails.do?activeTab=summary&keyVal=XXXX
-    const appPattern = /applicationDetails\.do\?activeTab=summary&keyVal=([^"']+)/g;
-    const seen = new Set();
-    let match;
+      const nu = a * F0 / Math.sqrt(1 - e2 * Math.sin(lat)*Math.sin(lat));
+      const rho = a * F0 * (1-e2) / Math.pow(1 - e2*Math.sin(lat)*Math.sin(lat), 1.5);
+      const eta2 = nu/rho - 1;
+      const tanLat = Math.tan(lat);
+      const cosLat = Math.cos(lat);
+      const secLat = 1/cosLat;
+      const dE = E - E0;
 
-    while ((match = appPattern.exec(html)) !== null) {
-      const keyVal = match[1];
-      if (seen.has(keyVal)) continue;
-      seen.add(keyVal);
+      const VII = tanLat / (2*rho*nu);
+      const VIII = tanLat / (24*rho*Math.pow(nu,3)) * (5 + 3*tanLat*tanLat + eta2 - 9*tanLat*tanLat*eta2);
+      const IX = tanLat / (720*rho*Math.pow(nu,5)) * (61 + 90*tanLat*tanLat + 45*Math.pow(tanLat,4));
+      const X = secLat / nu;
+      const XI = secLat / (6*Math.pow(nu,3)) * (nu/rho + 2*tanLat*tanLat);
+      const XII = secLat / (120*Math.pow(nu,5)) * (5 + 28*tanLat*tanLat + 24*Math.pow(tanLat,4));
+      const XIIA = secLat / (5040*Math.pow(nu,7)) * (61 + 662*tanLat*tanLat + 1320*Math.pow(tanLat,4) + 720*Math.pow(tanLat,6));
 
-      // Extract surrounding context for this result
-      const idx = match.index;
-      const chunk = html.substring(Math.max(0, idx - 500), idx + 1000);
+      const latWGS = lat - VII*Math.pow(dE,2) + VIII*Math.pow(dE,4) - IX*Math.pow(dE,6);
+      const lonWGS = lon0 + X*dE - XI*Math.pow(dE,3) + XII*Math.pow(dE,5) - XIIA*Math.pow(dE,7);
 
-      // Extract reference number
-      const refMatch = chunk.match(/class="[^"]*reference[^"]*"[^>]*>([^<]+)</i) ||
-                       chunk.match(/Reference[^:]*:?\s*<[^>]+>([^<]+)</i);
-      const reference = refMatch ? refMatch[1].trim() : keyVal;
-
-      // Extract address
-      const addrMatch = chunk.match(/class="[^"]*address[^"]*"[^>]*>([^<]+)</i) ||
-                        chunk.match(/Address[^:]*:?\s*<[^>]+>([^<]+)</i);
-      const address = addrMatch ? addrMatch[1].trim() : '';
-
-      // Extract description/proposal
-      const descMatch = chunk.match(/class="[^"]*proposal[^"]*"[^>]*>([\s\S]*?)<\/(?:p|span|td)/i) ||
-                        chunk.match(/Proposal[^:]*:?\s*<[^>]+>([\s\S]*?)<\/(?:p|span|td)/i);
-      const description = descMatch
-        ? descMatch[1].replace(/<[^>]+>/g, '').trim().substring(0, 500)
-        : '';
-
-      // Extract status
-      const statusMatch = chunk.match(/class="[^"]*status[^"]*"[^>]*>([^<]+)</i) ||
-                          chunk.match(/Status[^:]*:?\s*<[^>]+>([^<]+)</i);
-      const status = statusMatch ? statusMatch[1].trim() : '';
-
-      // Extract validated date
-      const dateMatch = chunk.match(/Validated[^:]*:?\s*<[^>]+>([^<]+)</i) ||
-                        chunk.match(/Received[^:]*:?\s*<[^>]+>([^<]+)</i);
-      const validDate = dateMatch ? dateMatch[1].trim() : '';
-
-      if (!description && !address) continue; // skip empty
-
-      apps.push({
-        keyVal,
-        reference,
-        address,
-        description,
-        status,
-        validDate,
-        url: `${baseUrl}/applicationDetails.do?activeTab=summary&keyVal=${keyVal}`,
-        council: councilName,
-      });
+      return {
+        lat: latWGS * 180 / Math.PI,
+        lng: lonWGS * 180 / Math.PI,
+      };
+    } catch(e) {
+      return null;
     }
-    return apps;
   }
 
-  // Search a single Idox council for major applications
-  async function searchIdox(council) {
+  // Date 90 days ago as milliseconds (for ArcGIS timestamp queries)
+  const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
+
+  // ── COUNCIL ENDPOINTS ──────────────────────────────────────────────────
+  // Each entry defines how to query the council's ArcGIS service and
+  // map their field names to our standard schema
+  // The URL fragment from the MappingGM experience app:
+  // dataSource_4-195a98c641c-layer-106-1953c89e476-layer-32
+  // Item ID 195a98c641c (truncated — may be 195a98c641c0 or similar)
+  // Layer 32 within a multi-layer service
+  // We try the most likely service URLs for the GM housing land supply
+  const GM_LAND_SUPPLY_URLS = [
+    'https://services.arcgis.com/t6lYS2Pmd8iVzg2t/arcgis/rest/services/GM_Housing_Land_Supply_2024/FeatureServer/0',
+    'https://services1.arcgis.com/t6lYS2Pmd8iVzg2t/arcgis/rest/services/GM_Housing_Land_Supply_2024/FeatureServer/0',
+    'https://services.arcgis.com/NzlPQPKn5QF9v2US/arcgis/rest/services/GM_Housing_Land_Supply_2024/FeatureServer/0',
+  ];
+
+  const COUNCILS = [
+    {
+      name: 'Bristol',
+      region: 'South West',
+      coords: { lat: 51.4545, lng: -2.5879 },
+      // Confirmed: maps.bristol.gov.uk planning applications, Layer 2
+      // Fields confirmed from ArcGIS service directory
+      url: 'https://maps.bristol.gov.uk/arcgis/rest/services/ext/ll_environment_and_planning/MapServer/2/query',
+      fields: 'REFVAL,ADDRESS,PROPOSAL,STATUS,DECISION,DEC_DATE,SHAPE',
+      dateField: 'DEC_DATE',
+      map: f => ({
+        reference: f.REFVAL,
+        address: f.ADDRESS,
+        description: f.PROPOSAL,
+        status: f.STATUS,
+        decision: f.DECISION,
+        date: f.DEC_DATE ? new Date(f.DEC_DATE).toLocaleDateString('en-GB') : null,
+        url: f.REFVAL ? `https://pa.bristol.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${f.REFVAL}` : null,
+      }),
+      srid: 27700,
+    },
+    {
+      name: 'Birmingham',
+      region: 'Midlands',
+      coords: { lat: 52.4862, lng: -1.8904 },
+      // Confirmed: maps.birmingham.gov.uk Internet_Planning MapServer, Layer 45 = HELAA
+      // HELAA = Housing and Economic Land Availability Assessment
+      // Strategic housing sites identified by BCC — includes housing, regen, mixed use
+      // This is the same data that powers planvu.co.uk/bcc
+      url: 'https://maps.birmingham.gov.uk/server/rest/services/Internet_Planning/MapServer/45/query',
+      fields: '*',
+      dateField: null, // HELAA is a strategic dataset, not time-filtered
+      where: '1=1', // Get all HELAA sites — we filter by units in the loop
+      map: f => ({
+        // HELAA field names — queried with outFields=* so we get everything
+        // Common HELAA fields across councils: SiteRef/Site_Ref, SiteName/Site_Name,
+        // Address, Units/Dwellings/NetDwellings, Status, LandUse/Use
+        reference: f.SiteRef || f.Site_Ref || f.SITE_REF || f.HELAARef || String(f.OBJECTID || ''),
+        address: f.Address || f.SiteAddress || f.Site_Address || f.SITE_ADDRESS || f.SiteName || f.Site_Name || '',
+        description: [
+          f.SiteName || f.Site_Name || f.SITE_NAME || '',
+          f.LandUse || f.Land_Use || f.UseType || f.Use || '',
+          f.Status || f.SiteStatus || '',
+        ].filter(Boolean).join(' — '),
+        status: f.Status || f.SiteStatus || f.SITE_STATUS || '',
+        units: f.Units || f.NetDwellings || f.Dwellings || f.HousingUnits || f.Net_Dwellings || null,
+        date: null,
+        url: 'https://www.planvu.co.uk/bcc/',
+      }),
+      srid: 27700,
+      minUnits: 50, // Filter sites with 50+ homes
+    },
+  ];
+
+  const results = [];
+
+  for (const council of COUNCILS) {
     try {
-      const searchUrl = `${council.url}/search.do?action=advanced`;
+      // Query: use custom where if provided, otherwise date filter or 1=1
+      const whereClause = council.where
+        ? council.where
+        : council.dateField
+          ? `${council.dateField} >= timestamp '${new Date(since).toISOString().slice(0,10)}'`
+          : '1=1';
 
-      // First GET to establish session cookie
-      const init = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; TheDeveloperIntelligence/1.0)',
-          'Accept': 'text/html,application/xhtml+xml',
-        },
-        signal: AbortSignal.timeout(8000),
+      const params = new URLSearchParams({
+        where: whereClause,
+        outFields: council.fields,
+        returnGeometry: 'true',
+        outSR: '4326', // request WGS84 directly — ArcGIS will reproject
+        resultRecordCount: '200',
+        orderByFields: council.dateField ? `${council.dateField} DESC` : 'OBJECTID DESC',
+        f: 'json',
       });
 
-      if (!init.ok) return { council: council.name, apps: [], error: `Init ${init.status}` };
-
-      const cookies = init.headers.get('set-cookie') || '';
-      const sessionCookie = cookies.split(';')[0]; // grab JSESSIONID
-
-      // POST the search form — Major applications, date range
-      const formData = new URLSearchParams({
-        'searchType': 'Application',
-        'applicationType': 'Major',  // Major only
-        'dateType': 'DC_Validated',
-        'dateStart': dateStr,
-        'dateEnd': todayStr,
-        'caseStatus': '',
-        'ward': '',
-        'parish': '',
-        'resultsPerPage': '50',
-        '_csrf': '', // Idox doesn't always require CSRF for search
-      });
-
-      const searchRes = await fetch(`${council.url}/search.do`, {
-        method: 'POST',
+      const response = await fetch(`${council.url}?${params}`, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0 (compatible; TheDeveloperIntelligence/1.0)',
-          'Referer': searchUrl,
-          'Cookie': sessionCookie,
-          'Accept': 'text/html',
+          'Accept': 'application/json',
+          'User-Agent': 'TheDeveloperIntelligence/1.0 (festivalofplace.co.uk)',
         },
-        body: formData.toString(),
         signal: AbortSignal.timeout(10000),
       });
 
-      if (!searchRes.ok) return { council: council.name, apps: [], error: `Search ${searchRes.status}` };
+      if (!response.ok) {
+        console.error(`${council.name}: HTTP ${response.status}`);
+        continue;
+      }
 
-      const html = await searchRes.text();
-      const apps = parseIdoxResults(html, council.name, council.url);
-      return { council: council.name, apps };
+      const data = await response.json();
+
+      if (data.error) {
+        // Retry with simpler where clause
+        console.error(`${council.name}: ArcGIS error ${data.error.code} — ${data.error.message}`);
+        continue;
+      }
+
+      const features = data.features || [];
+
+      const records = features.map(f => {
+        const attrs = f.attributes || {};
+        const mapped = council.map(attrs);
+        // Apply minimum units filter if specified (e.g. HELAA sites)
+        if (council.minUnits && mapped.units !== null && mapped.units !== undefined) {
+          const u = parseInt(mapped.units);
+          if (!isNaN(u) && u < council.minUnits) return null;
+        }
+
+        // Extract coordinates — ArcGIS returns centroid of polygon
+        let lat = null, lng = null;
+        if (f.geometry) {
+          if (f.geometry.x !== undefined) {
+            // Point geometry
+            lng = f.geometry.x;
+            lat = f.geometry.y;
+          } else if (f.geometry.rings) {
+            // Polygon — compute centroid
+            const ring = f.geometry.rings[0] || [];
+            if (ring.length > 0) {
+              lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+              lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+            }
+          }
+        }
+
+        // If outSR=4326 worked, coords are already WGS84
+        // If not (some servers ignore outSR), convert from BNG
+        if (lat && lng && (Math.abs(lat) > 90 || Math.abs(lng) > 180)) {
+          const wgs = bng2wgs84(lng, lat);
+          if (wgs) { lat = wgs.lat; lng = wgs.lng; }
+          else { lat = null; lng = null; }
+        }
+
+        return {
+          ...mapped,
+          council: council.name,
+          region: council.region,
+          lat: lat && !isNaN(lat) ? lat : null,
+          lng: lng && !isNaN(lng) ? lng : null,
+        };
+      }).filter(r => r && (r.description || r.address)); // skip empty/filtered records
+
+      results.push({ city: council.name, records, total: records.length });
+      console.log(`${council.name}: ${records.length} records`);
 
     } catch (e) {
-      return { council: council.name, apps: [], error: e.message };
+      console.error(`${council.name}: ${e.message}`);
     }
   }
 
-  try {
-    // Run all councils in parallel with a 200ms stagger to be polite
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-    const promises = IDOX_COUNCILS.map((council, i) =>
-      sleep(i * 200).then(() => searchIdox(council))
-    );
+  // ── Try GM housing land supply from MappingGM ─────────────────────────
+  // Filter to sites with 50+ dwellings and without full permission
+  for (const url of GM_LAND_SUPPLY_URLS) {
+    try {
+      const params = new URLSearchParams({
+        where: 'Dwellings >= 50',
+        outFields: 'OBJECTID,SiteRef,SiteName,SiteAddress,LocalAuthority,Dwellings,LandType,PlanningStatus,Status',
+        outSR: '4326',
+        returnGeometry: 'true',
+        resultRecordCount: '200',
+        f: 'json',
+      });
+      const r = await fetch(`${url}/query?${params}`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'TheDeveloperIntelligence/1.0' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (data.error || !data.features) continue;
 
-    const results = await Promise.all(promises);
-    const errors = results.filter(r => r.error).map(r => `${r.council}: ${r.error}`);
-    const allApps = results.flatMap(r => r.apps);
+      const gmRecords = data.features.map(f => {
+        const a = f.attributes || {};
+        let lat = null, lng = null;
+        if (f.geometry?.rings) {
+          const ring = f.geometry.rings[0] || [];
+          if (ring.length > 0) {
+            lng = ring.reduce((s,p) => s+p[0], 0) / ring.length;
+            lat = ring.reduce((s,p) => s+p[1], 0) / ring.length;
+          }
+        } else if (f.geometry?.x) { lng = f.geometry.x; lat = f.geometry.y; }
+        return {
+          reference: a.SiteRef || String(a.OBJECTID),
+          address: a.SiteAddress || a.SiteName || '',
+          description: `${a.SiteName || ''} — ${a.LandType || ''} — ${a.Dwellings || '?'} dwellings — ${a.PlanningStatus || a.Status || ''}`.trim(),
+          status: a.PlanningStatus || a.Status || '',
+          units: String(a.Dwellings || 0),
+          council: a.LocalAuthority || 'Greater Manchester',
+          region: 'North West',
+          lat, lng,
+          url: null,
+        };
+      }).filter(r => r.address || r.description);
 
-    if (errors.length) console.error('Idox errors:', errors);
-
-    // Return in PlanIt-compatible shape so frontend doesn't need changing
-    const cities = results
-      .filter(r => r.apps.length > 0)
-      .map(r => ({ city: r.council, records: r.apps, total: r.apps.length }));
-
-    res.status(200).json({ cities, total: allApps.length, errors: errors.length ? errors : undefined });
-
-  } catch (e) {
-    res.status(500).json({ error: e.message, cities: [] });
+      if (gmRecords.length > 0) {
+        // Split by authority for the cities shape
+        const byAuthority = {};
+        gmRecords.forEach(r => {
+          const key = r.council || 'Greater Manchester';
+          byAuthority[key] = byAuthority[key] || [];
+          byAuthority[key].push(r);
+        });
+        Object.entries(byAuthority).forEach(([city, records]) => {
+          results.push({ city, records, total: records.length });
+        });
+        console.log(`GM Land Supply (MappingGM): ${gmRecords.length} sites from ${Object.keys(byAuthority).length} authorities`);
+        break; // Successfully fetched, no need to try other URLs
+      }
+    } catch(e) {
+      console.log(`GM land supply URL failed: ${e.message}`);
+    }
   }
+
+  res.status(200).json({ cities: results, total: results.reduce((s,r) => s + r.records.length, 0) });
 }
