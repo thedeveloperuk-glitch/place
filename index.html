@@ -841,7 +841,16 @@ function renderProcurement(items){
 // RENDER PIPELINE
 function renderPipeline(items){
   const el=document.getElementById('panel-pipeline');
-  if(!items.length){el.innerHTML='<div class="empty-state">No planning applications match your filters.</div>';return;}
+  if(!items.length){el.innerHTML=`<div class="empty-state">
+  <div style="font-size:1.1rem;color:var(--ink-mid);font-family:var(--serif);margin-bottom:0.75rem;">No results match your current filters</div>
+  <div style="max-width:480px;margin:0 auto;line-height:1.8;font-size:0.88rem;">
+    <strong style="color:var(--ink);">Currently covered:</strong><br>
+    All 33 London boroughs (Planning London Datahub) · Bristol City Council (planning applications) · Birmingham City Council (HELAA housing sites) · Greater Manchester housing pipeline (10 authorities: Bolton, Bury, Manchester, Oldham, Rochdale, Salford, Stockport, Tameside, Trafford, Wigan)
+    <br><br>
+    <strong style="color:var(--ink);">Coming soon:</strong> Additional councils as they publish open data feeds.
+    ${searchTerm||regionFilter!=='all'||stageFilter!=='all'?'<br><br><a href="#" onclick="setStage('all');regionFilter='all';document.getElementById('region-select').value='all';clearSearch();return false;" style="color:var(--procurement);">Clear all filters</a>':''}
+  </div>
+</div>`;return;}
   const order={outline:0,reserved:1,full:2,prior:3,unknown:4};
   const sorted=[...items].sort((a,b)=>{
     const s=(order[a._stage?.cls]??4)-(order[b._stage?.cls]??4);
@@ -995,60 +1004,65 @@ async function fetchTenders(){
 // FETCH PLANNING
 async function fetchPlanning(){
   const items=[];
-  // Idox scraper — major English cities outside London
+  // Council ArcGIS open data feeds — confirmed public endpoints
   try{
     const res=await fetch('/api/planning');
     if(res.ok){
       const data=await res.json();
       const records=(data.cities||[]).flatMap(c=>c.records||[]);
       for(const app of records){
-        const desc=app.description||'';
-        const title=desc||app.reference||'Planning Application';
-        const descLower=desc.toLowerCase();
-        const isRegen=REGEN_KEYWORDS.some(kw=>descLower.includes(kw));
+        // Field names vary by council — handle both ArcGIS and legacy shapes
+        const desc=app.description||app.PROPOSAL||'';
+        const address=app.address||app.ADDRESS||'';
+        const title=desc||app.reference||address||'Planning Application';
+        const isRegen=REGEN_KEYWORDS.some(kw=>desc.toLowerCase().includes(kw));
 
-        // Extract dwelling count from description
         const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
         const u=m?parseInt(m[1]):null;
         if(u!==null&&u<50)continue;
 
-        // Geo — Idox scraper doesn't return coords, fall back to city centre
+        // Coordinates come from ArcGIS (already WGS84 or converted server-side)
+        const lat=app.lat||null;
+        const lng=app.lng||null;
+
+        // City matching from council name
         const cityName=app.council||'';
         let matchedCity=null;
         for(const city of Object.keys(CITY_COORDS)){
-          if(cityName.toLowerCase().includes(city.toLowerCase())||
-             (app.address||'').toLowerCase().includes(city.toLowerCase())){
-            matchedCity=city;break;
-          }
+          if(cityName.toLowerCase().includes(city.toLowerCase())){matchedCity=city;break;}
         }
-        let lat=null,lng=null;
-        if(matchedCity){
+        // Fallback: jitter around city centre if no coords
+        let finalLat=lat, finalLng=lng;
+        if((!finalLat||!finalLng)&&matchedCity){
           const cc=CITY_COORDS[matchedCity];
-          lat=cc.lat+(Math.random()-0.5)*0.06;
-          lng=cc.lng+(Math.random()-0.5)*0.08;
+          finalLat=cc.lat+(Math.random()-0.5)*0.06;
+          finalLng=cc.lng+(Math.random()-0.5)*0.08;
         }
 
         const item={
-          id:'p_'+(app.keyVal||app.reference||Math.random().toString(36).substr(2,8)),
+          id:'p_'+(app.reference||app.REFVAL||Math.random().toString(36).substr(2,8)),
           _tab:'pipeline',
           title,
           org:app.council||'',
-          location:app.address||'',
+          location:address,
           description:desc,
-          status:app.status||'',
-          reference:app.reference||'',
-          published:app.validDate||'',
+          status:app.status||app.STATUS||'',
+          reference:app.reference||app.REFVAL||'',
+          published:app.date||app.validDate||'',
           units:u?String(u):null,
           url:app.url||'',
-          lat,lng,
-          city:matchedCity,isRegen,
+          lat:finalLat&&!isNaN(finalLat)?finalLat:null,
+          lng:finalLng&&!isNaN(finalLng)?finalLng:null,
+          city:matchedCity,
+          isRegen,
+          region:app.region||null,
         };
-        item.region=detectRegion(item);
-        item._stage=detectStage(`${desc} ${title} ${app.reference||''}`);
+        if(!item.region)item.region=detectRegion(item);
+        item._stage=detectStage(`${desc} ${title} ${item.reference}`);
         items.push(item);
       }
     }
-  }catch(e){console.error('Idox scraper:',e);}
+  }catch(e){console.error('Council ArcGIS feeds:',e);}
   // London PLD
   try{
     const res=await fetch('/api/london');
@@ -1110,10 +1124,24 @@ async function fetchBrownfield(){
 
 // REGION SELECT
 function populateRegions(){
-  const all=new Set([...allProcurement,...allPipeline,...allLand].map(i=>i.region).filter(Boolean));
+  // Static curated region list — covers all data sources
+  const REGIONS = [
+    'London',
+    'South East',
+    'South West',
+    'Midlands',
+    'North West',
+    'Yorkshire',
+    'North East',
+    'East of England',
+  ];
   const sel=document.getElementById('region-select');
   sel.innerHTML='<option value="all">All regions</option>';
-  [...all].sort().forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
+  REGIONS.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r;o.textContent=r;
+    sel.appendChild(o);
+  });
 }
 
 // TAB COUNTS
