@@ -498,6 +498,10 @@
     </select>
   </div>
   <div class="filter-group" id="profession-group" style="display:none;">
+    <span class="filter-label">Status</span>
+    <button class="chip active" data-active="all"    onclick="setActive('all')">All</button>
+    <button class="chip"        data-active="open"   onclick="setActive('open')">Active only</button>
+    <div style="width:1px;background:var(--cream-darker);margin:0 0.25rem;align-self:stretch;"></div>
     <span class="filter-label">Seeking</span>
     <button class="chip active" data-prof="all"         onclick="setProf('all')">All</button>
     <button class="chip"        data-prof="architect"   onclick="setProf('architect')">Architect</button>
@@ -506,6 +510,14 @@
     <button class="chip"        data-prof="urban"       onclick="setProf('urban')">Urban Designer</button>
     <button class="chip"        data-prof="developer"   onclick="setProf('developer')">Developer / Partner</button>
     <button class="chip"        data-prof="consultant"  onclick="setProf('consultant')">Planning Consultant</button>
+  </div>
+  <div class="filter-group" id="stage-group" style="display:none;">
+    <span class="filter-label">Stage</span>
+    <button class="chip active" data-stage="all"      onclick="setStage('all')">All stages</button>
+    <button class="chip"        data-stage="outline"  onclick="setStage('outline')">Outline</button>
+    <button class="chip"        data-stage="reserved" onclick="setStage('reserved')">Reserved Matters</button>
+    <button class="chip"        data-stage="full"     onclick="setStage('full')">Full Permission</button>
+    <button class="chip"        data-stage="prior"    onclick="setStage('prior')">Prior Approval</button>
   </div>
   <div class="filter-group" id="scale-group">
     <span class="filter-label">Scale</span>
@@ -539,7 +551,7 @@
 <script>
 // STATE
 let allProcurement=[], allPipeline=[], allLand=[];
-let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all';
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all';
 let map, markerLayer;
 
 const CITY_COORDS={
@@ -588,38 +600,63 @@ function detectStage(text){
 function detectProfession(item) {
   const t = `${item.title} ${item.description}`.toLowerCase();
 
-  // Order matters — more specific first
+  // Order matters — most specific first to avoid misclassification
+
+  // Landscape architect — must come before generic 'architect'
   if (t.includes('landscape architect') || t.includes('landscape design') ||
-      t.includes('landscape consultant') || t.includes('landscape and public realm'))
+      t.includes('landscape consultant') || t.includes('landscape service') ||
+      t.includes('landscape and public realm') || t.includes('landscape framework') ||
+      t.includes('grounds maintenance') || t.includes('green infrastructure') ||
+      t.includes('ecological') || t.includes('ecology consultant'))
     return 'landscape';
 
+  // Masterplanner — before urban designer
   if (t.includes('masterplan') || t.includes('master plan') ||
-      t.includes('masterplanner') || t.includes('masterplanning'))
+      t.includes('masterplanning') || t.includes('spatial framework') ||
+      t.includes('area action plan') || t.includes('development framework') ||
+      t.includes('regeneration framework') || t.includes('place strategy'))
     return 'masterplan';
 
+  // Urban designer — before architect
   if (t.includes('urban design') || t.includes('urban designer') ||
       t.includes('placemaking') || t.includes('place-making') ||
-      t.includes('public realm design'))
+      t.includes('public realm design') || t.includes('public realm consultant') ||
+      t.includes('streetscape') || t.includes('place vision') ||
+      t.includes('design code') || t.includes('design guide') ||
+      t.includes('design review'))
     return 'urban';
 
-  if (t.includes('development partner') || t.includes('development management') ||
-      t.includes('joint venture') || t.includes('developer') ||
-      t.includes('development agreement') || t.includes('land disposal') ||
+  // Developer / development partner
+  if (t.includes('development partner') || t.includes('development agreement') ||
+      t.includes('joint venture') || t.includes('land disposal') ||
       t.includes('housing association') || t.includes('registered provider') ||
-      t.includes('build to rent') || t.includes('build-to-rent'))
+      t.includes('registered social landlord') ||
+      t.includes('build to rent') || t.includes('build-to-rent') ||
+      t.includes('development management') || t.includes('developer led') ||
+      t.includes('housebuilder') || t.includes('house builder') ||
+      t.includes('preferred developer') || t.includes('disposal of land'))
     return 'developer';
 
+  // Planning consultant
   if (t.includes('planning consultant') || t.includes('planning consultancy') ||
-      t.includes('planning advisor') || t.includes('planning services') ||
-      t.includes('planning support') || t.includes('planning framework') ||
-      t.includes('local plan') || t.includes('planning policy'))
+      t.includes('planning advisor') || t.includes('planning advice') ||
+      t.includes('planning support') || t.includes('planning policy') ||
+      t.includes('planning application') || t.includes('planning service') ||
+      t.includes('local plan') || t.includes('neighbourhood plan') ||
+      t.includes('viability') || t.includes('environmental impact') ||
+      t.includes('heritage consultant') || t.includes('transport consultant'))
     return 'consultant';
 
+  // Architect — broadest, catch-all for design services
   if (t.includes('architect') || t.includes('architectural') ||
       t.includes('design team') || t.includes('design service') ||
-      t.includes('building design') || t.includes('feasibility') ||
-      t.includes('outline design') || t.includes('riba') ||
-      t.includes('planning application') || t.includes('design and build'))
+      t.includes('design and build') || t.includes('building design') ||
+      t.includes('riba') || t.includes('rics') ||
+      t.includes('feasibility study') || t.includes('feasibility report') ||
+      t.includes('concept design') || t.includes('technical design') ||
+      t.includes('detailed design') || t.includes('scheme design') ||
+      t.includes('professional services') || t.includes('multi-disciplinary') ||
+      t.includes('multidisciplinary') || t.includes('design consultancy'))
     return 'architect';
 
   return 'other';
@@ -690,8 +727,10 @@ function switchTab(tab){
   document.getElementById(`panel-${tab}`).classList.add('active');
   // Show profession filter only on procurement tab; scale filter only on pipeline/land
   const profGroup  = document.getElementById('profession-group');
+  const stageGroup = document.getElementById('stage-group');
   const scaleGroup = document.getElementById('scale-group');
   if (profGroup)  profGroup.style.display  = tab === 'procurement' ? 'flex' : 'none';
+  if (stageGroup) stageGroup.style.display = tab === 'pipeline'    ? 'flex' : 'none';
   if (scaleGroup) scaleGroup.style.display = tab === 'procurement' ? 'none' : 'flex';
   renderCurrentTab();
 }
@@ -711,8 +750,15 @@ function getItems(){
       if(scaleFilter==='200'&&!(u>=200&&u<500))return false;
       if(scaleFilter==='500'&&u<500)return false;
     }
+    if(currentTab==='procurement'&&activeFilter==='open'){
+      const d=daysUntil(item._deadlineRaw);
+      if(d!==null&&d<0)return false;
+    }
     if(profFilter!=='all'&&currentTab==='procurement'){
       if(item.profession!==profFilter)return false;
+    }
+    if(stageFilter!=='all'&&currentTab==='pipeline'){
+      if((item._stage?.cls||'unknown')!==stageFilter)return false;
     }
     return true;
   });
@@ -737,6 +783,16 @@ function setScale(s){
 function setProf(p){
   profFilter=p;
   document.querySelectorAll('[data-prof]').forEach(b=>b.classList.toggle('active',b.dataset.prof===p));
+  renderCurrentTab();
+}
+function setStage(s){
+  stageFilter=s;
+  document.querySelectorAll('[data-stage]').forEach(b=>b.classList.toggle('active',b.dataset.stage===s));
+  renderCurrentTab();
+}
+function setActive(a){
+  activeFilter=a;
+  document.querySelectorAll('[data-active]').forEach(b=>b.classList.toggle('active',b.dataset.active===a));
   renderCurrentTab();
 }
 
@@ -939,39 +995,76 @@ async function fetchTenders(){
 // FETCH PLANNING
 async function fetchPlanning(){
   const items=[];
-  // PlanIt
+  // planning.data.gov.uk (replaces unreliable PlanIt)
   try{
     const res=await fetch('/api/planning');
     if(res.ok){
       const data=await res.json();
-      const records=(data.cities||[]).flatMap(c=>c.records||[]);
+      const records=data.records||[];
       for(const app of records){
-        const title=app.description||app.app_type||'Planning Application';
-        const isRegen=REGEN_KEYWORDS.some(kw=>(app.description||'').toLowerCase().includes(kw));
-        let lat=parseFloat(app.location_y),lng=parseFloat(app.location_x);
-        if((isNaN(lat)||isNaN(lng))&&app.location?.coordinates)[lng,lat]=app.location.coordinates;
-        const authorityStr=(app.area_name||app.address||'').toLowerCase();
-        let matchedCity=null;
-        for(const city of Object.keys(CITY_COORDS)){if(authorityStr.includes(city.toLowerCase())){matchedCity=city;break;}}
-        if((isNaN(lat)||isNaN(lng))&&matchedCity){const cc=CITY_COORDS[matchedCity];lat=cc.lat+(Math.random()-0.5)*0.06;lng=cc.lng+(Math.random()-0.5)*0.08;}
-        const m=(app.description||'').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
+        const desc=app.description||'';
+        const title=desc||app.name||app.reference||'Planning Application';
+
+        // Extract dwelling count from description
+        const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
         const u=m?parseInt(m[1]):null;
+        // Skip if clearly under 50
         if(u!==null&&u<50)continue;
+
+        const isRegen=REGEN_KEYWORDS.some(kw=>desc.toLowerCase().includes(kw));
+
+        // Coordinates
+        let lat=parseFloat(app.latitude),lng=parseFloat(app.longitude);
+        if((isNaN(lat)||isNaN(lng))&&app.point){
+          const wkt=app.point.match(/POINT\s*\(\s*([\-\d.]+)\s+([\-\d.]+)\s*\)/i);
+          if(wkt){lng=parseFloat(wkt[1]);lat=parseFloat(wkt[2]);}
+        }
+
+        // City matching
+        const locStr=(app['site-address']||app['local-authority']||'').toLowerCase();
+        let matchedCity=null;
+        for(const city of Object.keys(CITY_COORDS)){
+          if(locStr.includes(city.toLowerCase())){matchedCity=city;break;}
+        }
+        if((isNaN(lat)||isNaN(lng))&&matchedCity){
+          const cc=CITY_COORDS[matchedCity];
+          lat=cc.lat+(Math.random()-0.5)*0.06;
+          lng=cc.lng+(Math.random()-0.5)*0.08;
+        }
+
+        const appType=app['application-type']||'';
+        const appStatus=app['application-status']||app.decision||'';
+
         const item={
-          id:'p_'+(app.uid||app.name||Math.random().toString(36).substr(2,8)),
-          _tab:'pipeline',title,org:app.area_name||'',location:app.address||'',
-          description:app.description||'',status:app.app_state||'',
-          reference:app.uid||app.name||'',published:app.start_date||'',
+          id:'p_'+(app.reference||Math.random().toString(36).substr(2,8)),
+          _tab:'pipeline',
+          title,
+          org:app['local-authority']||app.organisation||'',
+          location:app['site-address']||'',
+          description:desc,
+          status:appStatus,
+          reference:app.reference||'',
+          published:app['start-date']||app['entry-date']||'',
           units:u?String(u):null,
-          url:app.link?`https://www.planit.org.uk${app.link}`:'',
-          lat:isNaN(lat)?null:lat,lng:isNaN(lng)?null:lng,city:matchedCity,isRegen,
+          hectares:app['site-hectares']||null,
+          url:app['document-url']||'',
+          lat:isNaN(lat)?null:lat,
+          lng:isNaN(lng)?null:lng,
+          city:matchedCity,isRegen,
         };
         item.region=detectRegion(item);
-        item._stage=detectStage(`${item.description} ${item.title} ${item.reference}`);
+        // Use application-type field first for stage, fall back to text detection
+        const stageFromType=
+          appType.includes('outline')?{label:'Outline',cls:'outline'}:
+          appType.includes('reserved')?{label:'Reserved Matters',cls:'reserved'}:
+          appType.includes('prior')?{label:'Prior Approval',cls:'prior'}:
+          appType.includes('full')?{label:'Full Permission',cls:'full'}:
+          null;
+        item._stage=stageFromType||detectStage(`${desc} ${item.title} ${item.reference} ${appType}`);
         items.push(item);
       }
     }
-  }catch(e){console.error('PlanIt:',e);}
+  }catch(e){console.error('planning.data.gov.uk:',e);}
   // London PLD
   try{
     const res=await fetch('/api/london');
