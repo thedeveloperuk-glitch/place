@@ -995,36 +995,27 @@ async function fetchTenders(){
 // FETCH PLANNING
 async function fetchPlanning(){
   const items=[];
-  // planning.data.gov.uk (replaces unreliable PlanIt)
+  // PlanIt — parallel city queries
   try{
     const res=await fetch('/api/planning');
     if(res.ok){
       const data=await res.json();
-      const records=data.records||[];
+      const records=(data.cities||[]).flatMap(c=>c.records||[]);
       for(const app of records){
-        const desc=app.description||'';
-        const title=desc||app.name||app.reference||'Planning Application';
+        const title=app.description||app.app_type||'Planning Application';
+        const desc=(app.description||'').toLowerCase();
+        const isRegen=REGEN_KEYWORDS.some(kw=>desc.includes(kw));
 
-        // Extract dwelling count from description
-        const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
-        const u=m?parseInt(m[1]):null;
-        // Skip if clearly under 50
-        if(u!==null&&u<50)continue;
-
-        const isRegen=REGEN_KEYWORDS.some(kw=>desc.toLowerCase().includes(kw));
-
-        // Coordinates
-        let lat=parseFloat(app.latitude),lng=parseFloat(app.longitude);
-        if((isNaN(lat)||isNaN(lng))&&app.point){
-          const wkt=app.point.match(/POINT\s*\(\s*([\-\d.]+)\s+([\-\d.]+)\s*\)/i);
-          if(wkt){lng=parseFloat(wkt[1]);lat=parseFloat(wkt[2]);}
+        let lat=parseFloat(app.location_y),lng=parseFloat(app.location_x);
+        if((isNaN(lat)||isNaN(lng))&&app.location?.coordinates){
+          const c=app.location.coordinates;
+          if(Array.isArray(c)&&c.length===2){lng=c[0];lat=c[1];}
         }
 
-        // City matching
-        const locStr=(app['site-address']||app['local-authority']||'').toLowerCase();
+        const authorityStr=(app.area_name||app.address||'').toLowerCase();
         let matchedCity=null;
         for(const city of Object.keys(CITY_COORDS)){
-          if(locStr.includes(city.toLowerCase())){matchedCity=city;break;}
+          if(authorityStr.includes(city.toLowerCase())){matchedCity=city;break;}
         }
         if((isNaN(lat)||isNaN(lng))&&matchedCity){
           const cc=CITY_COORDS[matchedCity];
@@ -1032,39 +1023,31 @@ async function fetchPlanning(){
           lng=cc.lng+(Math.random()-0.5)*0.08;
         }
 
-        const appType=app['application-type']||'';
-        const appStatus=app['application-status']||app.decision||'';
+        const m=(app.description||'').match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
+        const u=m?parseInt(m[1]):null;
+        if(u!==null&&u<50)continue;
 
         const item={
-          id:'p_'+(app.reference||Math.random().toString(36).substr(2,8)),
-          _tab:'pipeline',
-          title,
-          org:app['local-authority']||app.organisation||'',
-          location:app['site-address']||'',
-          description:desc,
-          status:appStatus,
-          reference:app.reference||'',
-          published:app['start-date']||app['entry-date']||'',
+          id:'p_'+(app.uid||app.name||Math.random().toString(36).substr(2,8)),
+          _tab:'pipeline',title,
+          org:app.area_name||'',
+          location:app.address||'',
+          description:app.description||'',
+          status:app.app_state||'',
+          reference:app.uid||app.name||'',
+          published:app.start_date||'',
           units:u?String(u):null,
-          hectares:app['site-hectares']||null,
-          url:app['document-url']||'',
+          url:app.link?`https://www.planit.org.uk${app.link}`:'',
           lat:isNaN(lat)?null:lat,
           lng:isNaN(lng)?null:lng,
           city:matchedCity,isRegen,
         };
         item.region=detectRegion(item);
-        // Use application-type field first for stage, fall back to text detection
-        const stageFromType=
-          appType.includes('outline')?{label:'Outline',cls:'outline'}:
-          appType.includes('reserved')?{label:'Reserved Matters',cls:'reserved'}:
-          appType.includes('prior')?{label:'Prior Approval',cls:'prior'}:
-          appType.includes('full')?{label:'Full Permission',cls:'full'}:
-          null;
-        item._stage=stageFromType||detectStage(`${desc} ${item.title} ${item.reference} ${appType}`);
+        item._stage=detectStage(`${item.description} ${item.title} ${item.reference}`);
         items.push(item);
       }
     }
-  }catch(e){console.error('planning.data.gov.uk:',e);}
+  }catch(e){console.error('PlanIt:',e);}
   // London PLD
   try{
     const res=await fetch('/api/london');
