@@ -495,7 +495,7 @@
       <option value="all">All regions</option>
     </select>
   </div>
-  <div class="filter-group" id="profession-group" style="display:none;">
+  <div class="filter-group" id="profession-group">
     <span class="filter-label">Status</span>
     <button class="chip active" data-active="all"    onclick="setActive('all')">All</button>
     <button class="chip"        data-active="open"   onclick="setActive('open')">Active only</button>
@@ -580,6 +580,9 @@ const REGION_KEYWORDS={
   'Yorkshire':['leeds','sheffield','bradford','hull','york','doncaster','rotherham','barnsley','huddersfield','wakefield','harrogate'],
   'North East':['newcastle','sunderland','middlesbrough','gateshead','durham','hartlepool','stockton','darlington'],
   'East of England':['cambridge','norwich','peterborough','ipswich','colchester','luton','hertford','bedford','chelmsford','stevenage'],
+  'Scotland':['scotland','scottish','glasgow','edinburgh','aberdeen','dundee','inverness','stirling','perth','fife','falkirk','renfrewshire','lanarkshire','ayrshire','argyll','highland','dumfries','galloway','lothian','clyde','scotrail','publiccontractsscotland'],
+  'Wales':['wales','welsh','cardiff','swansea','newport','wrexham','bangor','pembrokeshire','ceredigion','powys','gwynedd','conwy','flintshire','neath','bridgend','merthyr','rhondda'],
+  'Northern Ireland':['northern ireland','belfast','derry','londonderry','lisburn','newry','armagh','dungannon','antrim','ballymena','omagh','enniskillen','strabane','coleraine','translink'],
 };
 
 const REGEN_KEYWORDS=['regeneration','masterplan','master plan','mixed use','mixed-use','town centre','brownfield','placemaking','urban renewal','estate regeneration','high street','waterfront','cultural quarter','innovation district','city centre','strategic development','build to rent','heritage','science park','enterprise zone','development corporation','town deal','levelling up','affordable housing','housing development','outline planning','reserved matters','design team','architect','landscape architect','urban design','feasibility','development framework','public realm','co-living','compulsory purchase'];
@@ -1132,7 +1135,10 @@ function populateRegions(){
     <option value="North West">North West</option>
     <option value="Yorkshire">Yorkshire</option>
     <option value="North East">North East</option>
-    <option value="East of England">East of England</option>`;
+    <option value="East of England">East of England</option>
+    <option value="Scotland">Scotland</option>
+    <option value="Wales">Wales</option>
+    <option value="Northern Ireland">Northern Ireland</option>`;
 }
 
 // TAB COUNTS
@@ -1232,7 +1238,7 @@ async function init(){
   allLand.push(...brownfield);
   updateCounts();
   populateRegions();
-  renderCurrentTab();
+  switchTab('procurement'); // ensures correct filters shown on load
   updateUrgency();
 }
 init();
