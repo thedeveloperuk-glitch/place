@@ -1018,11 +1018,30 @@ async function fetchTenders(){
       const locationStr=`${buyerLocality} ${region} ${buyerName}`.toLowerCase();
 
       let lat=null,lng=null,matchedCity=null;
+      // Try city name match first
       for(const[city,coords]of Object.entries(CITY_COORDS)){
         if(locationStr.includes(city.toLowerCase())){
           lat=coords.lat+(Math.random()-0.5)*0.04;
           lng=coords.lng+(Math.random()-0.5)*0.04;
           matchedCity=city;break;
+        }
+      }
+      // Fallback: map NUTS region code to approximate city coords
+      // Covers tenders with obscure localities but valid delivery region codes
+      if(!lat){
+        const NUTS={
+          'UKI':{lat:51.507,lng:-0.128},'UKJ':{lat:51.300,lng:-0.200},
+          'UKK':{lat:51.454,lng:-2.588},'UKH':{lat:52.205,lng:0.122},
+          'UKG':{lat:52.486,lng:-1.890},'UKF':{lat:52.955,lng:-1.158},
+          'UKE':{lat:53.801,lng:-1.549},'UKD':{lat:53.481,lng:-2.242},
+          'UKC':{lat:54.978,lng:-1.618},'UKM':{lat:55.864,lng:-4.252},
+          'UKL':{lat:51.482,lng:-3.179},'UKN':{lat:54.597,lng:-5.930},
+        };
+        const code=region.slice(0,3).toUpperCase();
+        if(NUTS[code]){
+          lat=NUTS[code].lat+(Math.random()-0.5)*0.5;
+          lng=NUTS[code].lng+(Math.random()-0.5)*0.5;
+          matchedCity=code;
         }
       }
 
