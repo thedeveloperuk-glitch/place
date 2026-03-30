@@ -557,6 +557,7 @@ let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='al
 let map, markerLayer;
 
 const CITY_COORDS={
+  // England
   'London':{lat:51.5074,lng:-0.1278},'Manchester':{lat:53.4808,lng:-2.2426},
   'Birmingham':{lat:52.4862,lng:-1.8904},'Leeds':{lat:53.8008,lng:-1.5491},
   'Bristol':{lat:51.4545,lng:-2.5879},'Liverpool':{lat:53.4084,lng:-2.9916},
@@ -569,6 +570,48 @@ const CITY_COORDS={
   'Exeter':{lat:50.7184,lng:-3.5339},'Oxford':{lat:51.7520,lng:-1.2577},
   'Cambridge':{lat:52.2053,lng:0.1218},'York':{lat:53.9600,lng:-1.0873},
   'Hull':{lat:53.7457,lng:-0.3367},'Peterborough':{lat:52.5695,lng:-0.2405},
+  'Norwich':{lat:52.6309,lng:1.2974},'Ipswich':{lat:52.0567,lng:1.1482},
+  'Luton':{lat:51.8787,lng:-0.4200},'Milton Keynes':{lat:52.0406,lng:-0.7594},
+  'Swindon':{lat:51.5558,lng:-1.7797},'Gloucester':{lat:51.8642,lng:-2.2382},
+  'Cheltenham':{lat:51.8994,lng:-2.0783},'Northampton':{lat:52.2405,lng:-0.9027},
+  'Wolverhampton':{lat:52.5862,lng:-2.1285},'Walsall':{lat:52.5862,lng:-1.9824},
+  'Doncaster':{lat:53.5228,lng:-1.1286},'Wakefield':{lat:53.6833,lng:-1.4977},
+  'Sunderland':{lat:54.9069,lng:-1.3838},'Middlesbrough':{lat:54.5742,lng:-1.2350},
+  'Blackpool':{lat:53.8175,lng:-3.0357},'Preston':{lat:53.7632,lng:-2.7031},
+  'Warrington':{lat:53.3900,lng:-2.5970},'Salford':{lat:53.4875,lng:-2.2901},
+  'Stockport':{lat:53.4083,lng:-2.1494},'Bolton':{lat:53.5781,lng:-2.4283},
+  'Oldham':{lat:53.5409,lng:-2.1114},'Rochdale':{lat:53.6097,lng:-2.1561},
+  'Wigan':{lat:53.5432,lng:-2.6317},'Harrogate':{lat:53.9919,lng:-1.5378},
+  'Huddersfield':{lat:53.6458,lng:-1.7852},'Rotherham':{lat:53.4302,lng:-1.3573},
+  'Barnsley':{lat:53.5522,lng:-1.4797},'Gateshead':{lat:54.9629,lng:-1.6032},
+  'Hartlepool':{lat:54.6853,lng:-1.2116},'Darlington':{lat:54.5230,lng:-1.5524},
+  'Hereford':{lat:52.0567,lng:-2.7160},'Worcester':{lat:52.1936,lng:-2.2219},
+  'Shrewsbury':{lat:52.7078,lng:-2.7539},'Lincoln':{lat:53.2307,lng:-0.5406},
+  // Scotland
+  'Glasgow':{lat:55.8642,lng:-4.2518},'Edinburgh':{lat:55.9533,lng:-3.1883},
+  'Aberdeen':{lat:57.1497,lng:-2.0943},'Dundee':{lat:56.4620,lng:-2.9707},
+  'Inverness':{lat:57.4778,lng:-4.2247},'Stirling':{lat:56.1165,lng:-3.9369},
+  'Perth':{lat:56.3950,lng:-3.4310},'Falkirk':{lat:56.0019,lng:-3.7839},
+  'Paisley':{lat:55.8456,lng:-4.4239},'Kilmarnock':{lat:55.6111,lng:-4.4957},
+  'Ayr':{lat:55.4659,lng:-4.6294},'Dunfermline':{lat:56.0719,lng:-3.4531},
+  'Greenock':{lat:55.9459,lng:-4.7481},'Dumbarton':{lat:55.9432,lng:-4.5713},
+  'Kirkcaldy':{lat:56.1132,lng:-3.1615},'Glenrothes':{lat:56.1990,lng:-3.1780},
+  'Rutherglen':{lat:55.8280,lng:-4.2120},'Motherwell':{lat:55.7893,lng:-3.9880},
+  'Hamilton':{lat:55.7774,lng:-4.0399},'East Kilbride':{lat:55.7640,lng:-4.1773},
+  'Cumbernauld':{lat:55.9446,lng:-3.9939},'Livingston':{lat:55.8838,lng:-3.5164},
+  'Haddington':{lat:55.9565,lng:-2.7792},'Kirkintilloch':{lat:55.9393,lng:-4.1509},
+  // Wales
+  'Cardiff':{lat:51.4816,lng:-3.1791},'Swansea':{lat:51.6214,lng:-3.9436},
+  'Newport':{lat:51.5842,lng:-2.9977},'Wrexham':{lat:53.0460,lng:-2.9930},
+  'Bangor':{lat:53.2274,lng:-4.1293},'Bridgend':{lat:51.5053,lng:-3.5778},
+  'Merthyr':{lat:51.7435,lng:-3.3785},'Neath':{lat:51.6619,lng:-3.8065},
+  'Caernarfon':{lat:53.1394,lng:-4.2765},'Aberystwyth':{lat:52.4153,lng:-4.0829},
+  // Northern Ireland
+  'Belfast':{lat:54.5973,lng:-5.9301},'Derry':{lat:54.9966,lng:-7.3086},
+  'Londonderry':{lat:54.9966,lng:-7.3086},'Lisburn':{lat:54.5162,lng:-6.0580},
+  'Newry':{lat:54.1754,lng:-6.3400},'Armagh':{lat:54.3503,lng:-6.6528},
+  'Antrim':{lat:54.7197,lng:-6.2069},'Ballymena':{lat:54.8637,lng:-6.2763},
+  'Omagh':{lat:54.5980,lng:-7.3026},'Dungannon':{lat:54.5078,lng:-6.7668},
 };
 
 const REGION_KEYWORDS={
