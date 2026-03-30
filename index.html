@@ -517,12 +517,19 @@
     <button class="chip"        data-stage="full"     onclick="setStage('full')">Full Permission</button>
     <button class="chip"        data-stage="prior"    onclick="setStage('prior')">Prior Approval</button>
   </div>
-  <div class="filter-group" id="scale-group">
+  <div class="filter-group" id="scale-group" style="display:none;">
     <span class="filter-label">Scale</span>
     <button class="chip active" data-scale="all"  onclick="setScale('all')">Any</button>
     <button class="chip"        data-scale="50"   onclick="setScale('50')">50–199</button>
     <button class="chip"        data-scale="200"  onclick="setScale('200')">200–499</button>
     <button class="chip"        data-scale="500"  onclick="setScale('500')">500+</button>
+  </div>
+  <div class="filter-group" id="brownfield-status-group" style="display:none;">
+    <span class="filter-label">Permission</span>
+    <button class="chip active" data-bfstatus="all"              onclick="setBfStatus('all')">All sites</button>
+    <button class="chip"        data-bfstatus="not-permissioned" onclick="setBfStatus('not-permissioned')">No permission yet</button>
+    <button class="chip"        data-bfstatus="pending-decision" onclick="setBfStatus('pending-decision')">Decision pending</button>
+    <button class="chip"        data-bfstatus="permissioned"     onclick="setBfStatus('permissioned')">Permissioned</button>
   </div>
   <div class="results-meta" id="results-meta"></div>
 </div>
@@ -546,7 +553,7 @@
 <script>
 // STATE
 let allProcurement=[], allPipeline=[], allLand=[];
-let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all';
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all', bfStatusFilter='all';
 let map, markerLayer;
 
 const CITY_COORDS={
@@ -725,9 +732,11 @@ function switchTab(tab){
   const profGroup  = document.getElementById('profession-group');
   const stageGroup = document.getElementById('stage-group');
   const scaleGroup = document.getElementById('scale-group');
+  const bfGroup    = document.getElementById('brownfield-status-group');
   if (profGroup)  profGroup.style.display  = tab === 'procurement' ? 'flex' : 'none';
-  if (stageGroup) stageGroup.style.display = tab === 'pipeline'    ? 'flex' : 'none';
-  if (scaleGroup) scaleGroup.style.display = tab === 'procurement' ? 'none' : 'flex';
+  if (stageGroup) stageGroup.style.display = 'none';
+  if (scaleGroup) scaleGroup.style.display = 'none';
+  if (bfGroup)    bfGroup.style.display    = tab === 'land' ? 'flex' : 'none';
   renderCurrentTab();
 }
 
@@ -740,6 +749,9 @@ function getItems(){
       if(!hay.includes(searchTerm))return false;
     }
     if(regionFilter!=='all'&&item.region!==regionFilter&&item.region!=='Other')return false;
+    if(bfStatusFilter!=='all'&&currentTab==='land'){
+      if(item.status!==bfStatusFilter)return false;
+    }
     if(scaleFilter!=='all'&&currentTab!=='procurement'){
       const u=parseInt(item.units||0);
       if(scaleFilter==='50'&&!(u>=50&&u<200))return false;
@@ -789,6 +801,11 @@ function setStage(s){
 function setActive(a){
   activeFilter=a;
   document.querySelectorAll('[data-active]').forEach(b=>b.classList.toggle('active',b.dataset.active===a));
+  renderCurrentTab();
+}
+function setBfStatus(s){
+  bfStatusFilter=s;
+  document.querySelectorAll('[data-bfstatus]').forEach(b=>b.classList.toggle('active',b.dataset.bfstatus===s));
   renderCurrentTab();
 }
 
@@ -963,7 +980,7 @@ async function fetchTenders(){
         }
       }
 
-      const deadlineRaw=tender.submissionTerms?.bidDeadline||tender.communication?.futureNoticeDate||null;
+      const deadlineRaw=tender.submissionTerms?.bidDeadline||tender.tenderPeriod?.endDate||tender.communication?.futureNoticeDate||null;
       const value=tender.value?.amount;
 
       const item={
