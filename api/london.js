@@ -44,6 +44,7 @@ export default async function handler(req, res) {
     const upstream = await fetch(
       'https://planningdata.london.gov.uk/api-guest/applications/_search',
       {
+        signal: AbortSignal.timeout(12000),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(query),
