@@ -47,14 +47,12 @@ export default async function handler(req, res) {
 
   function isRelevant(release) {
     const tender = release.tender || {};
-    // Check title, description, and items descriptions
     const text = [
       tender.title,
       tender.description,
       release.description,
       ...(tender.items||[]).map(i => i.description),
     ].filter(Boolean).join(' ').toLowerCase();
-
     if (REGEN_KEYWORDS.some(kw => text.includes(kw))) return true;
     if (isCpvRelevant(tender.classification?.id)) return true;
     for (const item of (tender.items || [])) {
@@ -66,34 +64,40 @@ export default async function handler(req, res) {
   }
 
   try {
-    const now   = new Date();
-    const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
-    const until = now;
+    const now      = new Date();
+    const recent   = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000); // last 60 days
+    const older    = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 60–180 days ago
+    const mid      = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000); // boundary
 
-    // Use updatedFrom/updatedTo — confirmed working params for this API
-    const params = [
-      `updatedFrom=${since.toISOString().split('.')[0]}`,
-      `updatedTo=${until.toISOString().split('.')[0]}`,
-      `stages=tender`,
-      `limit=100`,
-    ].join('&');
+    const fmt = d => d.toISOString().split('.')[0];
+    const base = 'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages';
 
-    const base = `https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages`;
+    // Two calls covering different time windows — gives a broader geographic spread
+    // rather than 100 results all from the most recently active authorities
+    const [recentRes, olderRes] = await Promise.all([
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+      }),
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+      }),
+    ]);
 
-    const upstream = await fetch(`${base}?${params}`, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(10000),
+    const allReleases = [];
+    if (recentRes.ok) { const d = await recentRes.json(); allReleases.push(...(d.releases||[])); }
+    if (olderRes.ok)  { const d = await olderRes.json();  allReleases.push(...(d.releases||[])); }
+
+    // Deduplicate by release id
+    const seen = new Set();
+    const deduped = allReleases.filter(r => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id); return true;
     });
 
-    if (!upstream.ok) {
-      const body = await upstream.text().catch(() => '');
-      return res.status(200).json({ releases: [], error: `Upstream ${upstream.status}: ${body.slice(0,200)}` });
-    }
-
-    const data = await upstream.json();
-    const releases = (data.releases || []).filter(isRelevant);
-
-    res.status(200).json({ releases, _total: data.releases?.length, _filtered: releases.length });
+    const releases = deduped.filter(isRelevant);
+    res.status(200).json({ releases, _total: deduped.length, _filtered: releases.length });
 
   } catch (e) {
     console.error('Tenders:', e.message);
