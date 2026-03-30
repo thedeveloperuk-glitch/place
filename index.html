@@ -475,9 +475,7 @@
   <button class="tab-btn tab-procurement active" onclick="switchTab('procurement')">
     Procurement Notices <span class="tab-count" id="cnt-procurement">—</span>
   </button>
-  <button class="tab-btn tab-pipeline" onclick="switchTab('pipeline')">
-    Planning Pipeline <span class="tab-count" id="cnt-pipeline">—</span>
-  </button>
+
   <button class="tab-btn tab-land" onclick="switchTab('land')">
     Brownfield Land <span class="tab-count" id="cnt-land">—</span>
   </button>
@@ -499,8 +497,8 @@
   </div>
   <div class="filter-group" id="profession-group" style="display:none;">
     <span class="filter-label">Status</span>
-    <button class="chip"        data-active="all"    onclick="setActive('all')">All</button>
-    <button class="chip active" data-active="open"   onclick="setActive('open')">Active only</button>
+    <button class="chip active" data-active="all"    onclick="setActive('all')">All</button>
+    <button class="chip"        data-active="open"   onclick="setActive('open')">Active only</button>
     <div style="width:1px;background:var(--cream-darker);margin:0 0.25rem;align-self:stretch;"></div>
     <span class="filter-label">Seeking</span>
     <button class="chip active" data-prof="all"         onclick="setProf('all')">All</button>
@@ -532,9 +530,6 @@
 <div id="panel-procurement" class="tab-panel active">
   <div class="loading-state"><div class="loading-label">Loading procurement notices…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
 </div>
-<div id="panel-pipeline" class="tab-panel">
-  <div class="loading-state"><div class="loading-label">Loading planning pipeline…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
-</div>
 <div id="panel-land" class="tab-panel">
   <div class="loading-state"><div class="loading-label">Loading brownfield land register…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
 </div>
@@ -551,7 +546,7 @@
 <script>
 // STATE
 let allProcurement=[], allPipeline=[], allLand=[];
-let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='open';
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all';
 let map, markerLayer;
 
 const CITY_COORDS={
@@ -720,6 +715,7 @@ function updateMarkers(items){
 
 // TABS
 function switchTab(tab){
+  if(tab==='pipeline')tab='procurement';
   currentTab=tab;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector(`.tab-${tab}`).classList.add('active');
@@ -743,7 +739,7 @@ function getItems(){
       const hay=`${item.title} ${item.org} ${item.location} ${item.description} ${item.region||''}`.toLowerCase();
       if(!hay.includes(searchTerm))return false;
     }
-    if(regionFilter!=='all'&&item.region!==regionFilter)return false;
+    if(regionFilter!=='all'&&item.region!==regionFilter&&item.region!=='Other')return false;
     if(scaleFilter!=='all'&&currentTab!=='procurement'){
       const u=parseInt(item.units||0);
       if(scaleFilter==='50'&&!(u>=50&&u<200))return false;
@@ -1109,17 +1105,23 @@ async function fetchBrownfield(){
 
 // REGION SELECT
 function populateRegions(){
-  const all=new Set([...allProcurement,...allPipeline,...allLand].map(i=>i.region).filter(Boolean));
+  // Static list — never gets out of sync with data
   const sel=document.getElementById('region-select');
-  sel.innerHTML='<option value="all">All regions</option>';
-  [...all].sort().forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
+  sel.innerHTML=`<option value="all">All regions</option>
+    <option value="London">London</option>
+    <option value="South East">South East</option>
+    <option value="South West">South West</option>
+    <option value="Midlands">Midlands</option>
+    <option value="North West">North West</option>
+    <option value="Yorkshire">Yorkshire</option>
+    <option value="North East">North East</option>
+    <option value="East of England">East of England</option>`;
 }
 
 // TAB COUNTS
 function updateCounts(){
-  document.getElementById('cnt-procurement').textContent=allProcurement.length;
-  document.getElementById('cnt-pipeline').textContent=allPipeline.length;
-  document.getElementById('cnt-land').textContent=allLand.length;
+  document.getElementById('cnt-procurement').textContent=allProcurement.length||'0';
+  document.getElementById('cnt-land').textContent=allLand.length||'0';
 }
 
 
@@ -1208,10 +1210,8 @@ function updateUrgency() {
 // INIT
 async function init(){
   initMap();
-  const[tenders,planning,brownfield]=await Promise.all([fetchTenders(),fetchPlanning(),fetchBrownfield()]);
+  const[tenders,brownfield]=await Promise.all([fetchTenders(),fetchBrownfield()]);
   allProcurement.push(...tenders);
-  // merge PlanIt + London into pipeline
-  allPipeline.push(...planning);
   allLand.push(...brownfield);
   updateCounts();
   populateRegions();
