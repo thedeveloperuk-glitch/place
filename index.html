@@ -841,16 +841,15 @@ function renderProcurement(items){
 // RENDER PIPELINE
 function renderPipeline(items){
   const el=document.getElementById('panel-pipeline');
-  if(!items.length){el.innerHTML=`<div class="empty-state">
-  <div style="font-size:1.1rem;color:var(--ink-mid);font-family:var(--serif);margin-bottom:0.75rem;">No results match your current filters</div>
-  <div style="max-width:480px;margin:0 auto;line-height:1.8;font-size:0.88rem;">
-    <strong style="color:var(--ink);">Currently covered:</strong><br>
-    All 33 London boroughs (Planning London Datahub) · Bristol City Council (planning applications) · Birmingham City Council (HELAA housing sites) · Greater Manchester housing pipeline (10 authorities: Bolton, Bury, Manchester, Oldham, Rochdale, Salford, Stockport, Tameside, Trafford, Wigan)
-    <br><br>
-    <strong style="color:var(--ink);">Coming soon:</strong> Additional councils as they publish open data feeds.
-    ${searchTerm||regionFilter!=='all'||stageFilter!=='all'?'<br><br><a href="#" onclick="setStage('all');regionFilter='all';document.getElementById('region-select').value='all';clearSearch();return false;" style="color:var(--procurement);">Clear all filters</a>':''}
-  </div>
-</div>`;return;}
+  if(!items.length){el.innerHTML='<div class="empty-state">'
+    +'<div style="font-size:1.1rem;color:var(--ink-mid);font-family:var(--serif);margin-bottom:0.75rem;">No results match your current filters</div>'
+    +'<div style="max-width:480px;margin:0 auto;line-height:1.8;font-size:0.88rem;">'
+    +'<strong style="color:var(--ink);">Currently covered:</strong><br>'
+    +'All 33 London boroughs (Planning London Datahub) &middot; Bristol City Council &middot; Birmingham City Council (MyBrumMap + HELAA) &middot; Greater Manchester (10 authorities)'
+    +'<br><br><strong style="color:var(--ink);">Coming soon:</strong> Additional councils as they publish open data feeds.'
+    +(searchTerm||regionFilter!=='all'||stageFilter!=='all'?'<br><br><a href="#" onclick="setStage('all');regionFilter='all';document.getElementById('region-select').value='all';clearSearch();return false;" style="color:var(--procurement);">Clear all filters</a>':'')
+    +'</div></div>';
+return;}
   const order={outline:0,reserved:1,full:2,prior:3,unknown:4};
   const sorted=[...items].sort((a,b)=>{
     const s=(order[a._stage?.cls]??4)-(order[b._stage?.cls]??4);
