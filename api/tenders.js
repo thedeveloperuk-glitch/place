@@ -47,10 +47,15 @@ export default async function handler(req, res) {
 
   function isRelevant(release) {
     const tender = release.tender || {};
-    const text = `${tender.title||''} ${tender.description||''}`.toLowerCase();
-    // Keyword match first — fast
+    // Check title, description, and items descriptions
+    const text = [
+      tender.title,
+      tender.description,
+      release.description,
+      ...(tender.items||[]).map(i => i.description),
+    ].filter(Boolean).join(' ').toLowerCase();
+
     if (REGEN_KEYWORDS.some(kw => text.includes(kw))) return true;
-    // CPV match
     if (isCpvRelevant(tender.classification?.id)) return true;
     for (const item of (tender.items || [])) {
       if (isCpvRelevant(item.classification?.id)) return true;
@@ -61,31 +66,36 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Single call — tender stage only, 6-month window
-    // 'tender' stage covers both ITT and PIN/prior-information in practice
-    // One call = fast; planning stage rarely adds new results for our categories
-    const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
-      .toISOString().split('.')[0];
+    const now   = new Date();
+    const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    const until = now;
 
-    const url = `https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages` +
-      `?stages=tender&publishedFrom=${since}&limit=100`;
+    // Use updatedFrom/updatedTo — confirmed working params for this API
+    const params = [
+      `updatedFrom=${since.toISOString().split('.')[0]}`,
+      `updatedTo=${until.toISOString().split('.')[0]}`,
+      `stages=tender`,
+      `limit=100`,
+    ].join('&');
 
-    const upstream = await fetch(url, {
+    const base = `https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages`;
+
+    const upstream = await fetch(`${base}?${params}`, {
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(10000),
     });
 
     if (!upstream.ok) {
-      return res.status(upstream.status).json({ releases: [], error: `Upstream ${upstream.status}` });
+      const body = await upstream.text().catch(() => '');
+      return res.status(200).json({ releases: [], error: `Upstream ${upstream.status}: ${body.slice(0,200)}` });
     }
 
     const data = await upstream.json();
     const releases = (data.releases || []).filter(isRelevant);
 
-    res.status(200).json({ releases });
+    res.status(200).json({ releases, _total: data.releases?.length, _filtered: releases.length });
 
   } catch (e) {
-    // Return empty rather than error — frontend handles gracefully
     console.error('Tenders:', e.message);
     res.status(200).json({ releases: [], error: e.message });
   }
