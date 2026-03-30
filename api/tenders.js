@@ -99,8 +99,8 @@ export default async function handler(req, res) {
     // Fetch planning stage AND tender stage in parallel
     // Most architecture/landscape/masterplanning notices are at tender stage
     const [planningRes, tenderRes] = await Promise.all([
-      fetch(`${base}?stages=planning&${params}`, { headers: { 'Accept': 'application/json' } }),
-      fetch(`${base}?stages=tender&${params}`,   { headers: { 'Accept': 'application/json' } }),
+      fetch(`${base}?stages=planning&${params}`, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(12000) }),
+      fetch(`${base}?stages=tender&${params}`,   { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(12000) }),
     ]);
 
     const allReleases = [];
