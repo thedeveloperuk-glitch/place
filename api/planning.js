@@ -1,11 +1,15 @@
-// planning.js — Multi-source UK planning pipeline
+// api/planning.js — Planning pipeline data
 // Sources:
-//   1. PlanIt API (planit.org.uk) — 417 councils, large applications, free tier
-//      Fields: address, app_size, app_state, app_type, authority_name,
-//              decided_date, description, lat, lng, link, reference, start_date, uid
-//   2. Bristol ArcGIS (confirmed, REFVAL/ADDRESS/PROPOSAL/STATUS/DEC_DATE)
-//   3. Birmingham MyBrumMap (live apps layer 12) + HELAA (strategic sites layer 45)
-//   4. GM housing land supply (MappingGM, URL candidates)
+//   - PlanIt cache (from /api/fetch-planit nightly cron) — 417 councils, large apps
+//   - Bristol City Council ArcGIS (confirmed endpoint, live)
+//   - Birmingham MyBrumMap layer 12 (live planning apps)
+//   - Birmingham HELAA layer 45 (strategic housing sites)
+//   - GM housing land supply (MappingGM, URL candidates)
+//
+// PlanIt is NOT called live — it's a hobby project (1 req/min limit, no SLA).
+// Instead we read from the Vercel Blob cache written by the nightly cron.
+
+import { list, head } from '@vercel/blob';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -45,16 +49,19 @@ export default async function handler(req, res) {
   }
 
   function arcgisCentroid(f) {
-    if (!f.geometry) return {lat:null,lng:null};
     let lat=null,lng=null;
+    if (!f.geometry) return {lat,lng};
     if (f.geometry.x !== undefined) { lng=f.geometry.x; lat=f.geometry.y; }
     else if (f.geometry.rings) {
       const ring=f.geometry.rings[0]||[];
-      if (ring.length) { lng=ring.reduce((s,p)=>s+p[0],0)/ring.length; lat=ring.reduce((s,p)=>s+p[1],0)/ring.length; }
+      if (ring.length) {
+        lng=ring.reduce((s,p)=>s+p[0],0)/ring.length;
+        lat=ring.reduce((s,p)=>s+p[1],0)/ring.length;
+      }
     }
-    // Convert BNG if needed
     if (lat&&lng&&(Math.abs(lat)>90||Math.abs(lng)>180)) {
-      const w=bng2wgs84(lng,lat); if(w){lat=w.lat;lng=w.lng;}else{lat=null;lng=null;}
+      const w=bng2wgs84(lng,lat);
+      if(w){lat=w.lat;lng=w.lng;}else{lat=null;lng=null;}
     }
     return {lat,lng};
   }
@@ -62,174 +69,155 @@ export default async function handler(req, res) {
   const results = [];
   const since90 = new Date(Date.now()-90*24*60*60*1000).toISOString().slice(0,10);
 
-  // ── 1. PLANIT API ────────────────────────────────────────────────────────
-  // Free, 417 councils, large apps only, last 90 days, England bounding box
-  // Returns: address, app_size, app_state, app_type, authority_name,
-  //          decided_date, description, lat, lng, link, reference, start_date
+  // ── 1. PLANIT — read from nightly cache ──────────────────────────────────
+  // Cache written by /api/fetch-planit cron (runs 3am UTC daily).
+  // If cache is missing (first deploy), this section returns nothing gracefully.
   try {
-    const planitUrl = new URL('https://www.planit.org.uk/api/applics/json');
-    planitUrl.searchParams.set('app_size', 'large');
-    planitUrl.searchParams.set('start_date', since90);
-    planitUrl.searchParams.set('end_date', new Date().toISOString().slice(0,10));
-    planitUrl.searchParams.set('bbox', '-6.0,49.8,2.0,56.0'); // England
-    planitUrl.searchParams.set('pg_sz', '100');
-    planitUrl.searchParams.set('limit', '100');
+    const blob = await head('planit-cache.json');
+    if (blob?.url) {
+      const cr = await fetch(blob.url, {signal:AbortSignal.timeout(8000)});
+      if (cr.ok) {
+        const cached = await cr.json();
+        const apps = cached.apps || [];
+        const cacheAge = cached.fetchedAt
+          ? Math.round((Date.now()-new Date(cached.fetchedAt).getTime())/(1000*60*60))
+          : null;
+        console.log(`PlanIt cache: ${apps.length} apps, fetched ${cacheAge}h ago`);
 
-    const pr = await fetch(planitUrl.toString(), {
-      headers: {'Accept':'application/json','User-Agent':'TheDeveloperIntelligence/1.0 (festivalofplace.co.uk)'},
-      signal: AbortSignal.timeout(12000),
-    });
-
-    if (pr.ok) {
-      const pd = await pr.json();
-      const apps = pd.results || pd.applics || (Array.isArray(pd) ? pd : []);
-      const byAuthority = {};
-
-      for (const app of apps) {
-        const desc = app.description || '';
-        // Extract dwelling count from description
-        const m = desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|bed)/i);
-        const units = m ? parseInt(m[1]) : null;
-
-        const item = {
-          reference: app.uid || app.reference || app.name || '',
-          address: app.address || '',
-          description: desc,
-          status: app.app_state || '',
-          app_type: app.app_type || '',
-          date: app.start_date || app.decided_date || '',
-          units: units ? String(units) : null,
-          lat: parseFloat(app.lat) || null,
-          lng: parseFloat(app.lng) || null,
-          url: app.url || app.link || '',
-          council: app.authority_name || '',
-          region: null,
-          _source: 'planit',
-        };
-        const auth = app.authority_name || 'Unknown';
-        byAuthority[auth] = byAuthority[auth] || [];
-        byAuthority[auth].push(item);
+        const byAuthority = {};
+        for (const app of apps) {
+          const desc = app.description || '';
+          const m = desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|bed)/i);
+          const auth = app.authority_name || 'Unknown';
+          byAuthority[auth] = byAuthority[auth] || [];
+          byAuthority[auth].push({
+            reference: app.uid || app.reference || app.name || '',
+            address:   app.address || '',
+            description: desc,
+            status:    app.app_state || '',
+            app_type:  app.app_type || '',
+            date:      app.start_date || app.decided_date || '',
+            units:     m ? String(parseInt(m[1])) : null,
+            lat:       parseFloat(app.lat) || null,
+            lng:       parseFloat(app.lng) || null,
+            url:       app.url || app.link || '',
+            council:   auth,
+            region:    null,
+            _source:   'planit',
+          });
+        }
+        Object.entries(byAuthority).forEach(([city,records])=>{
+          results.push({city,records,total:records.length,_cacheAge:cacheAge});
+        });
       }
-
-      const totalPlanit = Object.values(byAuthority).reduce((s,a)=>s+a.length,0);
-      Object.entries(byAuthority).forEach(([city,records])=>{
-        results.push({city, records, total:records.length});
-      });
-      console.log(`PlanIt: ${totalPlanit} large apps from ${Object.keys(byAuthority).length} authorities`);
+    } else {
+      console.log('PlanIt cache: not yet populated (run /api/fetch-planit to prime)');
     }
   } catch(e) {
-    console.error('PlanIt API:', e.message);
+    // Blob not set up or cache missing — fail silently, other sources still load
+    console.log('PlanIt cache unavailable:', e.message);
   }
 
-  // ── 2. BRISTOL ArcGIS ────────────────────────────────────────────────────
-  // Confirmed: maps.bristol.gov.uk, layer 2, fields REFVAL/ADDRESS/PROPOSAL/STATUS/DEC_DATE
+  // ── 2. BRISTOL ArcGIS (confirmed, live) ──────────────────────────────────
   try {
-    const brisParams = new URLSearchParams({
-      where: `DEC_DATE >= timestamp '${since90}'`,
-      outFields: 'REFVAL,ADDRESS,PROPOSAL,STATUS,DECISION,DEC_DATE',
-      returnGeometry: 'true', outSR: '4326',
-      resultRecordCount: '200', orderByFields: 'DEC_DATE DESC', f: 'json',
-    });
     const br = await fetch(
-      'https://maps.bristol.gov.uk/arcgis/rest/services/ext/ll_environment_and_planning/MapServer/2/query?' + brisParams,
+      'https://maps.bristol.gov.uk/arcgis/rest/services/ext/ll_environment_and_planning/MapServer/2/query?'
+      + new URLSearchParams({
+          where:`DEC_DATE >= timestamp '${since90}'`,
+          outFields:'REFVAL,ADDRESS,PROPOSAL,STATUS,DECISION,DEC_DATE',
+          returnGeometry:'true',outSR:'4326',resultRecordCount:'200',
+          orderByFields:'DEC_DATE DESC',f:'json',
+        }),
       {headers:{'Accept':'application/json','User-Agent':'TheDeveloperIntelligence/1.0'},signal:AbortSignal.timeout(10000)}
     );
     if (br.ok) {
       const bd = await br.json();
-      if (!bd.error && bd.features) {
-        const records = bd.features.map(f => {
+      if (!bd.error && bd.features?.length) {
+        const records = bd.features.map(f=>{
           const a=f.attributes||{};
           const {lat,lng}=arcgisCentroid(f);
           return {
             reference:a.REFVAL||'',address:a.ADDRESS||'',description:a.PROPOSAL||'',
-            status:a.STATUS||'',decision:a.DECISION||'',
-            date:a.DEC_DATE?new Date(a.DEC_DATE).toLocaleDateString('en-GB'):null,
+            status:a.STATUS||'',date:a.DEC_DATE?new Date(a.DEC_DATE).toLocaleDateString('en-GB'):null,
             units:null,lat,lng,
             url:a.REFVAL?`https://pa.bristol.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${a.REFVAL}`:'',
             council:'Bristol',region:'South West',_source:'bristol-arcgis',
           };
         }).filter(r=>r.description||r.address);
         results.push({city:'Bristol',records,total:records.length});
-        console.log(`Bristol ArcGIS: ${records.length} records`);
+        console.log(`Bristol: ${records.length}`);
       }
     }
-  } catch(e){console.error('Bristol ArcGIS:',e.message);}
+  } catch(e){console.error('Bristol:',e.message);}
 
-  // ── 3. BIRMINGHAM MyBrumMap — live planning applications ─────────────────
-  // Layer 12 "Post 1990 Planning Application" — BCC's official public planning register
+  // ── 3. BIRMINGHAM MyBrumMap — live applications ───────────────────────────
   try {
-    const bhamParams = new URLSearchParams({
-      where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',
-      resultRecordCount:'200',orderByFields:'OBJECTID DESC',f:'json',
-    });
     const bhr = await fetch(
-      'https://maps.birmingham.gov.uk/server/rest/services/mybrummap/mybrummap_Planning/MapServer/12/query?'+bhamParams,
+      'https://maps.birmingham.gov.uk/server/rest/services/mybrummap/mybrummap_Planning/MapServer/12/query?'
+      + new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',resultRecordCount:'200',orderByFields:'OBJECTID DESC',f:'json'}),
       {headers:{'Accept':'application/json','User-Agent':'TheDeveloperIntelligence/1.0'},signal:AbortSignal.timeout(10000)}
     );
     if (bhr.ok) {
       const bhd = await bhr.json();
-      if (!bhd.error && bhd.features) {
+      if (!bhd.error && bhd.features?.length) {
         const records = bhd.features.map(f=>{
           const a=f.attributes||{};
           const {lat,lng}=arcgisCentroid(f);
-          const ref=a.PA_Number||a.APP_NO||a.AppRef||a.Reference||a.REFVAL||String(a.OBJECTID||'');
-          const desc=a.Proposal||a.Description||a.PROPOSAL||a.Proposal_Text||a.APP_DESC||'';
-          const addr=a.Location||a.Address||a.Site_Address||a.SiteAddress||a.LOCATION||'';
+          const ref=a.PA_Number||a.APP_NO||a.AppRef||a.Reference||String(a.OBJECTID||'');
+          const desc=a.Proposal||a.Description||a.PROPOSAL||a.Proposal_Text||'';
+          const addr=a.Location||a.Address||a.Site_Address||a.SiteAddress||'';
           if(!desc&&!addr) return null;
           const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|bed)/i);
+          const d=a.Valid_Date||a.ValidDate||a.Date_Valid||a.AppDate||a.VALID_DATE;
           return {
             reference:ref,address:addr,description:desc,
             status:a.Status||a.Decision||a.APP_STATUS||'',
-            date:(()=>{const d=a.Valid_Date||a.ValidDate||a.Date_Valid||a.AppDate||a.VALID_DATE||a.RECEIVED_DATE;return d?new Date(d).toLocaleDateString('en-GB'):null;})(),
+            date:d?new Date(d).toLocaleDateString('en-GB'):null,
             units:m?String(parseInt(m[1])):null,lat,lng,
-            url:ref?`https://idoxpa.westmidlands.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${ref}`:'https://maps.birmingham.gov.uk/webapps/brum/mybrummap/',
+            url:`https://idoxpa.westmidlands.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${ref}`,
             council:'Birmingham',region:'Midlands',_source:'birmingham-mybrummap',
           };
         }).filter(Boolean);
         if(records.length) results.push({city:'Birmingham',records,total:records.length});
-        console.log(`Birmingham MyBrumMap: ${records.length} records`);
+        console.log(`Birmingham: ${records.length}`);
       }
     }
-  } catch(e){console.error('Birmingham MyBrumMap:',e.message);}
+  } catch(e){console.error('Birmingham:',e.message);}
 
-  // ── 4. BIRMINGHAM HELAA — strategic housing sites ─────────────────────────
-  // Internet_Planning layer 45, 50+ homes, from planvu.co.uk/bcc
+  // ── 4. BIRMINGHAM HELAA — strategic sites ────────────────────────────────
   try {
-    const heParams = new URLSearchParams({
-      where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',
-      resultRecordCount:'200',f:'json',
-    });
     const her = await fetch(
-      'https://maps.birmingham.gov.uk/server/rest/services/Internet_Planning/MapServer/45/query?'+heParams,
+      'https://maps.birmingham.gov.uk/server/rest/services/Internet_Planning/MapServer/45/query?'
+      + new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',resultRecordCount:'200',f:'json'}),
       {headers:{'Accept':'application/json','User-Agent':'TheDeveloperIntelligence/1.0'},signal:AbortSignal.timeout(10000)}
     );
     if (her.ok) {
       const hed = await her.json();
-      if (!hed.error && hed.features) {
+      if (!hed.error && hed.features?.length) {
         const records = hed.features.map(f=>{
           const a=f.attributes||{};
           const {lat,lng}=arcgisCentroid(f);
-          const units=parseInt(a.Units||a.NetDwellings||a.Dwellings||a.HousingUnits||a.Net_Dwellings||a.DWELLINGS||0);
-          if(units>0&&units<50) return null; // skip small sites
-          const desc=[a.SiteName||a.Site_Name||a.SITE_NAME||a.Name||'',a.LandUse||a.Land_Use||a.UseType||a.Use||'',a.Status||a.SiteStatus||''].filter(Boolean).join(' — ');
-          const addr=a.Address||a.SiteAddress||a.Site_Address||a.SiteName||a.Site_Name||'';
+          const units=parseInt(a.Units||a.NetDwellings||a.Dwellings||a.HousingUnits||0);
+          if(units>0&&units<50) return null;
+          const desc=[a.SiteName||a.Site_Name||a.Name||'',a.LandUse||a.Land_Use||a.UseType||'',a.Status||a.SiteStatus||''].filter(Boolean).join(' — ');
+          const addr=a.Address||a.SiteAddress||a.SiteName||a.Site_Name||'';
           if(!desc&&!addr) return null;
           return {
-            reference:a.SiteRef||a.Site_Ref||a.SITE_REF||a.HELAARef||String(a.OBJECTID||''),
+            reference:a.SiteRef||a.Site_Ref||a.HELAARef||String(a.OBJECTID||''),
             address:addr,description:desc||'Birmingham HELAA site',
-            status:a.Status||a.SiteStatus||'HELAA',
+            status:a.Status||a.SiteStatus||'HELAA allocation',
             units:units?String(units):null,date:null,lat,lng,
             url:'https://www.planvu.co.uk/bcc/',
             council:'Birmingham',region:'Midlands',_source:'birmingham-helaa',
           };
         }).filter(Boolean);
         if(records.length) results.push({city:'Birmingham (HELAA)',records,total:records.length});
-        console.log(`Birmingham HELAA: ${records.length} strategic sites`);
+        console.log(`Birmingham HELAA: ${records.length}`);
       }
     }
   } catch(e){console.error('Birmingham HELAA:',e.message);}
 
-  // ── 5. GREATER MANCHESTER housing land supply ─────────────────────────────
+  // ── 5. GREATER MANCHESTER land supply ────────────────────────────────────
   const GM_URLS=[
     'https://services.arcgis.com/t6lYS2Pmd8iVzg2t/arcgis/rest/services/GM_Housing_Land_Supply_2024/FeatureServer/0',
     'https://services1.arcgis.com/t6lYS2Pmd8iVzg2t/arcgis/rest/services/GM_Housing_Land_Supply_2024/FeatureServer/0',
@@ -238,12 +226,13 @@ export default async function handler(req, res) {
   for(const url of GM_URLS){
     try{
       const gmr=await fetch(url+'/query?'+new URLSearchParams({
-        where:'Dwellings >= 50',outFields:'OBJECTID,SiteRef,SiteName,SiteAddress,LocalAuthority,Dwellings,LandType,PlanningStatus,Status',
+        where:'Dwellings >= 50',
+        outFields:'OBJECTID,SiteRef,SiteName,SiteAddress,LocalAuthority,Dwellings,LandType,PlanningStatus,Status',
         outSR:'4326',returnGeometry:'true',resultRecordCount:'200',f:'json',
       }),{headers:{'Accept':'application/json','User-Agent':'TheDeveloperIntelligence/1.0'},signal:AbortSignal.timeout(8000)});
       if(!gmr.ok) continue;
       const gmd=await gmr.json();
-      if(gmd.error||!gmd.features||!gmd.features.length) continue;
+      if(gmd.error||!gmd.features?.length) continue;
       const byAuth={};
       gmd.features.forEach(f=>{
         const a=f.attributes||{};
@@ -259,7 +248,7 @@ export default async function handler(req, res) {
         });
       });
       Object.entries(byAuth).forEach(([city,records])=>results.push({city,records,total:records.length}));
-      console.log(`GM Land Supply: ${gmd.features.length} sites from ${Object.keys(byAuth).length} authorities`);
+      console.log(`GM Land Supply: ${gmd.features.length} sites`);
       break;
     }catch(e){console.log('GM URL failed:',e.message);}
   }
