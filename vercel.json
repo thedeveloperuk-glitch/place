@@ -1,5 +1,11 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "crons": [
+    {
+      "path": "/api/fetch-planit",
+      "schedule": "0 3 * * *"
+    }
   ]
 }
