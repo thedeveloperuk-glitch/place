@@ -9,7 +9,6 @@
 // PlanIt is NOT called live — it's a hobby project (1 req/min limit, no SLA).
 // Instead we read from the Vercel Blob cache written by the nightly cron.
 
-import { list, head } from '@vercel/blob';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -69,54 +68,9 @@ export default async function handler(req, res) {
   const results = [];
   const since90 = new Date(Date.now()-90*24*60*60*1000).toISOString().slice(0,10);
 
-  // ── 1. PLANIT — read from nightly cache ──────────────────────────────────
-  // Cache written by /api/fetch-planit cron (runs 3am UTC daily).
-  // If cache is missing (first deploy), this section returns nothing gracefully.
-  try {
-    const blob = await head('planit-cache.json');
-    if (blob?.url) {
-      const cr = await fetch(blob.url, {signal:AbortSignal.timeout(8000)});
-      if (cr.ok) {
-        const cached = await cr.json();
-        const apps = cached.apps || [];
-        const cacheAge = cached.fetchedAt
-          ? Math.round((Date.now()-new Date(cached.fetchedAt).getTime())/(1000*60*60))
-          : null;
-        console.log(`PlanIt cache: ${apps.length} apps, fetched ${cacheAge}h ago`);
-
-        const byAuthority = {};
-        for (const app of apps) {
-          const desc = app.description || '';
-          const m = desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|bed)/i);
-          const auth = app.authority_name || 'Unknown';
-          byAuthority[auth] = byAuthority[auth] || [];
-          byAuthority[auth].push({
-            reference: app.uid || app.reference || app.name || '',
-            address:   app.address || '',
-            description: desc,
-            status:    app.app_state || '',
-            app_type:  app.app_type || '',
-            date:      app.start_date || app.decided_date || '',
-            units:     m ? String(parseInt(m[1])) : null,
-            lat:       parseFloat(app.lat) || null,
-            lng:       parseFloat(app.lng) || null,
-            url:       app.url || app.link || '',
-            council:   auth,
-            region:    null,
-            _source:   'planit',
-          });
-        }
-        Object.entries(byAuthority).forEach(([city,records])=>{
-          results.push({city,records,total:records.length,_cacheAge:cacheAge});
-        });
-      }
-    } else {
-      console.log('PlanIt cache: not yet populated (run /api/fetch-planit to prime)');
-    }
-  } catch(e) {
-    // Blob not set up or cache missing — fail silently, other sources still load
-    console.log('PlanIt cache unavailable:', e.message);
-  }
+  // ── 1. PLANIT — nightly cache (requires @vercel/blob + fetch-planit cron)
+  // Skipped until blob storage is configured. Live sources below handle coverage.
+  // Once @vercel/blob is installed: uncomment the import at top and blob read block.
 
   // ── 2. BRISTOL ArcGIS (confirmed, live) ──────────────────────────────────
   try {
