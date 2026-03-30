@@ -72,22 +72,23 @@ export default async function handler(req, res) {
     const fmt = d => d.toISOString().split('.')[0];
     const base = 'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages';
 
-    // Two calls covering different time windows — gives a broader geographic spread
-    // rather than 100 results all from the most recently active authorities
-    const [recentRes, olderRes] = await Promise.all([
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000),
-      }),
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000),
-      }),
+    // Four parallel calls: tender + planning stages, across two time windows
+    // Spreads the 100-result limit across more time and more notice types
+    // 'planning' stage = PIN / early market engagement, popular with English councils
+    const headers = { 'Accept': 'application/json' };
+    const sig = () => ({ signal: AbortSignal.timeout(10000) });
+
+    const [r1, r2, r3, r4] = await Promise.all([
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,  { headers, ...sig() }),
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,   { headers, ...sig() }),
+      fetch(`${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, { headers, ...sig() }),
+      fetch(`${base}?stages=planning&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,  { headers, ...sig() }),
     ]);
 
     const allReleases = [];
-    if (recentRes.ok) { const d = await recentRes.json(); allReleases.push(...(d.releases||[])); }
-    if (olderRes.ok)  { const d = await olderRes.json();  allReleases.push(...(d.releases||[])); }
+    for (const res of [r1, r2, r3, r4]) {
+      if (res.ok) { const d = await res.json(); allReleases.push(...(d.releases||[])); }
+    }
 
     // Deduplicate by release id
     const seen = new Set();
