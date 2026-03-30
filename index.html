@@ -995,60 +995,76 @@ async function fetchTenders(){
 // FETCH PLANNING
 async function fetchPlanning(){
   const items=[];
-  // Idox scraper — major English cities outside London
+  // planning.data.gov.uk (replaces unreliable PlanIt)
   try{
     const res=await fetch('/api/planning');
     if(res.ok){
       const data=await res.json();
-      const records=(data.cities||[]).flatMap(c=>c.records||[]);
+      const records=data.records||[];
       for(const app of records){
         const desc=app.description||'';
-        const title=desc||app.reference||'Planning Application';
-        const descLower=desc.toLowerCase();
-        const isRegen=REGEN_KEYWORDS.some(kw=>descLower.includes(kw));
+        const title=desc||app.name||app.reference||'Planning Application';
 
         // Extract dwelling count from description
         const m=desc.match(/(\d+)\s*(?:no\.?\s*)?(?:dwelling|unit|apartment|flat|home|house|residential)/i);
         const u=m?parseInt(m[1]):null;
+        // Skip if clearly under 50
         if(u!==null&&u<50)continue;
 
-        // Geo — Idox scraper doesn't return coords, fall back to city centre
-        const cityName=app.council||'';
+        const isRegen=REGEN_KEYWORDS.some(kw=>desc.toLowerCase().includes(kw));
+
+        // Coordinates
+        let lat=parseFloat(app.latitude),lng=parseFloat(app.longitude);
+        if((isNaN(lat)||isNaN(lng))&&app.point){
+          const wkt=app.point.match(/POINT\s*\(\s*([\-\d.]+)\s+([\-\d.]+)\s*\)/i);
+          if(wkt){lng=parseFloat(wkt[1]);lat=parseFloat(wkt[2]);}
+        }
+
+        // City matching
+        const locStr=(app['site-address']||app['local-authority']||'').toLowerCase();
         let matchedCity=null;
         for(const city of Object.keys(CITY_COORDS)){
-          if(cityName.toLowerCase().includes(city.toLowerCase())||
-             (app.address||'').toLowerCase().includes(city.toLowerCase())){
-            matchedCity=city;break;
-          }
+          if(locStr.includes(city.toLowerCase())){matchedCity=city;break;}
         }
-        let lat=null,lng=null;
-        if(matchedCity){
+        if((isNaN(lat)||isNaN(lng))&&matchedCity){
           const cc=CITY_COORDS[matchedCity];
           lat=cc.lat+(Math.random()-0.5)*0.06;
           lng=cc.lng+(Math.random()-0.5)*0.08;
         }
 
+        const appType=app['application-type']||'';
+        const appStatus=app['application-status']||app.decision||'';
+
         const item={
-          id:'p_'+(app.keyVal||app.reference||Math.random().toString(36).substr(2,8)),
+          id:'p_'+(app.reference||Math.random().toString(36).substr(2,8)),
           _tab:'pipeline',
           title,
-          org:app.council||'',
-          location:app.address||'',
+          org:app['local-authority']||app.organisation||'',
+          location:app['site-address']||'',
           description:desc,
-          status:app.status||'',
+          status:appStatus,
           reference:app.reference||'',
-          published:app.validDate||'',
+          published:app['start-date']||app['entry-date']||'',
           units:u?String(u):null,
-          url:app.url||'',
-          lat,lng,
+          hectares:app['site-hectares']||null,
+          url:app['document-url']||'',
+          lat:isNaN(lat)?null:lat,
+          lng:isNaN(lng)?null:lng,
           city:matchedCity,isRegen,
         };
         item.region=detectRegion(item);
-        item._stage=detectStage(`${desc} ${title} ${app.reference||''}`);
+        // Use application-type field first for stage, fall back to text detection
+        const stageFromType=
+          appType.includes('outline')?{label:'Outline',cls:'outline'}:
+          appType.includes('reserved')?{label:'Reserved Matters',cls:'reserved'}:
+          appType.includes('prior')?{label:'Prior Approval',cls:'prior'}:
+          appType.includes('full')?{label:'Full Permission',cls:'full'}:
+          null;
+        item._stage=stageFromType||detectStage(`${desc} ${item.title} ${item.reference} ${appType}`);
         items.push(item);
       }
     }
-  }catch(e){console.error('Idox scraper:',e);}
+  }catch(e){console.error('planning.data.gov.uk:',e);}
   // London PLD
   try{
     const res=await fetch('/api/london');
