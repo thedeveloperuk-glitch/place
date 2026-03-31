@@ -3,39 +3,63 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const RELEVANT_CPV_PREFIXES = ['71', '70', '45', '77310', '90710'];
+  // CPV codes for architectural, planning and land/property services only
+  // Deliberately excludes broad '45' construction prefix — too many supply/product notices
+  const RELEVANT_CPV_PREFIXES = ['71', '70', '77310', '90710'];
 
   const RELEVANT_CPV_CODES = new Set([
+    // Architectural & related services
     '71200000','71210000','71220000','71221000','71222000','71223000',
     '71400000','71410000','71420000','71421000',
     '71240000','71241000','71242000','71243000','71244000','71245000',
+    // Engineering & technical consultancy
     '71310000','71311000','71312000','71313000','71315000',
     '71320000','71321000','71322000','71324000','71327000','71328000',
     '71350000','71351000','71354000','71355000','71356000',
+    // Real estate & land
     '70000000','70100000','70110000','70111000','70112000',
     '70120000','70121000','70122000','70123000','70130000',
     '70320000','70330000','70331000','70332000','70333000',
+    // Landscape services
     '77310000','77311000','77312000','77313000','77314000','77315000',
-    '45262000','45262700','45262800','45453000','45453100','45454000',
+    // Construction — residential and mixed-use ONLY (not general 45xxx)
+    '45210000','45211000','45211100','45211340','45211341',
   ]);
 
-  const REGEN_KEYWORDS = [
+  // Keywords that must appear in the TITLE to pass the title-relevance check
+  const TITLE_KEYWORDS = [
     'architect','architectural','landscape architect','landscape design',
-    'landscape consultant','landscape and public realm',
     'urban designer','masterplan','master plan','masterplanning',
     'placemaking','public realm','urban design','urban renewal',
     'regeneration','development partner','developer partner',
-    'development opportunity','redevelopment opportunity',
-    'disposal opportunity','site disposal','land disposal',
+    'disposal','site disposal','land disposal',
     'joint venture','preferred developer','development agreement',
-    'housing association','registered provider','affordable housing',
-    'housing development','residential development',
-    'brownfield','mixed use','mixed-use','town centre',
-    'feasibility study','design team','design consultancy',
-    'planning consultant','planning consultancy','planning policy',
+    'design team','design consultancy','design services',
+    'planning consultant','planning consultancy','planning services',
     'heritage consultant','design code','design guide',
-    'build to rent','co-living','garden city','new town',
-    'development corporation','town deal','levelling up',
+    'build to rent','garden city','new town',
+    'affordable housing','housing development','residential scheme',
+    'brownfield','mixed use','mixed-use','town centre regeneration',
+    'development corporation','levelling up fund',
+    'feasibility','appointment of','expression of interest',
+  ];
+
+  // Terms that EXCLUDE a notice even if keywords match — irrelevant supply/product titles
+  const EXCLUSION_TERMS = [
+    'waste chute','linen chute','chutes','boiler','boilers','pipework','ductwork',
+    'fire alarm','fire suppression','sprinkler','cladding supply',
+    'lifts supply','lift supply','elevator supply','escalator',
+    'windows supply','doors supply','glazing supply','curtain wall supply',
+    'roofing supply','flooring supply','floor covering','carpet supply',
+    'electrical supply','mechanical supply','hvac supply','plumbing supply',
+    'street lighting supply','furniture supply','signage supply',
+    'catering equipment','kitchen equipment','laundry equipment',
+    'waste management service','refuse collection','cleaning contract',
+    'grounds maintenance','tree surgery','grass cutting','weed control',
+    'security guard','cctv installation','access control system',
+    'insurance','pensions','recruitment agency','temporary staff',
+    'it support','software licence','telecoms','broadband',
+    'printing','stationery','vehicle','fleet','fuel',
   ];
 
   function isCpvRelevant(id) {
@@ -46,19 +70,30 @@ export default async function handler(req, res) {
 
   function isRelevant(release) {
     const tender = release.tender || {};
-    const text = [
+    const title = (tender.title || release.description || '').toLowerCase();
+    const fullText = [
       tender.title,
       tender.description,
       release.description,
       ...(tender.items||[]).map(i => i.description),
     ].filter(Boolean).join(' ').toLowerCase();
-    if (REGEN_KEYWORDS.some(kw => text.includes(kw))) return true;
-    if (isCpvRelevant(tender.classification?.id)) return true;
-    for (const item of (tender.items || [])) {
-      if (isCpvRelevant(item.classification?.id)) return true;
-      for (const ac of (item.additionalClassifications || []))
-        if (isCpvRelevant(ac.id)) return true;
-    }
+
+    // Immediately reject if title contains any exclusion term
+    if (EXCLUSION_TERMS.some(t => title.includes(t))) return false;
+
+    // Must match a keyword in the TITLE (not just buried in description)
+    const titleMatch = TITLE_KEYWORDS.some(kw => title.includes(kw));
+
+    // CPV codes still valid as a secondary signal — but combined with title check
+    const cpvMatch = isCpvRelevant(tender.classification?.id)
+      || (tender.items || []).some(item =>
+          isCpvRelevant(item.classification?.id)
+          || (item.additionalClassifications || []).some(ac => isCpvRelevant(ac.id))
+        );
+
+    // Require EITHER a title keyword match, OR a CPV match + some keyword anywhere in text
+    if (titleMatch) return true;
+    if (cpvMatch && TITLE_KEYWORDS.some(kw => fullText.includes(kw))) return true;
     return false;
   }
 
