@@ -779,33 +779,27 @@ function detectProfession(item) {
       t.includes('design review'))
     return 'urban';
 
-  // Early market engagement / UK2 notices — check BEFORE developer
-  // _stageLabel is now copied from the backend-enriched release
-  if (item._stageLabel === 'Early Market Engagement' ||
-      t.includes('early market engagement') || t.includes('preliminary market engagement') ||
-      t.includes('market engagement notice') || t.includes('market sounding') ||
-      t.includes('prior information notice') || t.includes('pin notice') ||
-      t.includes('request for information') || t.includes('pre-market engagement'))
+  // Early market engagement / UK2 notices
+  if (t.includes('early market engagement') || t.includes('preliminary market engagement') ||
+      t.includes('market engagement') || t.includes('request for information') ||
+      t.includes('market sounding') || t.includes('prior information notice') ||
+      item._stageLabel === 'Early Market Engagement')
     return 'market';
 
-  // Developer / development partner — broad catch using backend noticeType too
-  // _noticeType 'Developer' is set when CPV 70xxx (real estate) is present
-  if (item._noticeType === 'Developer' ||
-      t.includes('development partner') || t.includes('development partnership') ||
-      t.includes('development agreement') || t.includes('seeks developer') ||
-      t.includes('developer partner') || t.includes('preferred developer') ||
-      t.includes('preferred partner') || t.includes('site disposal') ||
-      t.includes('surplus site') || t.includes('surplus land') ||
+  // Developer / development partner
+  if (t.includes('development partner') || t.includes('development agreement') ||
+      t.includes('seeks developer') || t.includes('developer partner') ||
+      t.includes('preferred developer') || t.includes('preferred partner') ||
+      t.includes('site disposal') || t.includes('surplus site') || t.includes('surplus land') ||
       t.includes('land sale') || t.includes('disposal of land') ||
-      t.includes('land disposal') || t.includes('development opportunity') ||
-      t.includes('regeneration opportunity') || t.includes('listed building conversion') ||
-      t.includes('building conversion') || t.includes('joint venture') ||
+      t.includes('development opportunity') || t.includes('listed building conversion') ||
+      t.includes('joint venture') || t.includes('land disposal') ||
+      t.includes('housing association') || t.includes('registered provider') ||
+      t.includes('registered social landlord') ||
       t.includes('build to rent') || t.includes('build-to-rent') ||
-      t.includes('housebuilder') || t.includes('house builder') ||
-      t.includes('registered provider') || t.includes('registered social landlord') ||
       t.includes('development management') || t.includes('developer led') ||
-      t.includes('acquisition') || t.includes('forward funding') ||
-      t.includes('overage') || t.includes('option agreement'))
+      t.includes('housebuilder') || t.includes('house builder') ||
+      t.includes('preferred developer') || t.includes('disposal of land'))
     return 'developer';
 
   // Planning consultant
@@ -933,15 +927,7 @@ function getItems(){
       if(d!==null&&d<0)return false;
     }
     if(profFilter!=='all'&&currentTab==='procurement'){
-      if(profFilter==='market'){
-        // Market Engagement chip = UK2 preliminary market engagement notices
-        if(!(item._stageLabel||'').includes('Market'))return false;
-      } else if(profFilter==='developer'){
-        // Developer chip = developer profession + market engagement
-        if(item.profession!=='developer'&&!(item._stageLabel||'').includes('Market'))return false;
-      } else {
-        if(item.profession!==profFilter)return false;
-      }
+      if(item.profession!==profFilter)return false;
     }
     if(stageFilter!=='all'&&currentTab==='pipeline'){
       if((item._stage?.cls||'unknown')!==stageFilter)return false;
@@ -1178,12 +1164,9 @@ async function fetchTenders(){
         published:release.date?fmtDate(release.date):null,
         url:`https://www.find-tender.service.gov.uk/Notice/${release.id}`,
         lat,lng,city:matchedCity,isRegen,
-        _stageLabel:release._stageLabel||'Notice',
-        _noticeType:release._noticeType||null,
       };
       item.region=detectRegion(item);
-      // Use CPV-derived profession from backend; fall back to text detection
-      item.profession=item._profession||detectProfession(item);
+      item.profession=detectProfession(item);
       items.push(item);
     }
     return items;
@@ -1701,7 +1684,7 @@ function renderProjects(){
 // Leave MEMBERS_SHEET_CSV as empty string to use the hardcoded fallback list.
 // ═══════════════════════════════════════════════════════════════
 
-const MEMBERS_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRXfU5osjpdh2TbcrNmAhik-r3SYyWhxt_wcMxTRT3FjH93nWzwtVzYx2EqJHBaw93M10mcgxXNSvKM/pub?gid=0&single=true&output=csv';
+const MEMBERS_SHEET_CSV = ''; // ← paste your Google Sheets CSV export URL here
 
 const MEMBERS_FALLBACK = [
   {name:'Allford Hall Monaghan Morris',website:'https://www.ahmm.co.uk',category:'Architect'},
