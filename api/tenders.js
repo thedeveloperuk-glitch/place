@@ -3,194 +3,167 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const CPV_DEVELOPER = new Set([
-    '70000000','70100000','70110000','70111000','70112000',
-    '70120000','70121000','70122000','70123000','70130000',
-    '70200000','70210000','70220000','70300000','70310000',
-    '70320000','70330000','70331000','70332000','70333000',
-  ]);
-  const CPV_ARCHITECT = new Set([
-    '71200000','71210000','71220000','71221000','71222000','71223000',
-    '71240000','71241000','71242000','71243000','71244000','71245000',
-    '71400000','71410000','71420000','71421000',
-  ]);
-  const CPV_ENGINEER = new Set([
-    '71300000','71310000','71311000','71312000','71313000','71315000',
-    '71320000','71321000','71322000','71324000','71327000','71328000',
-    '71330000','71340000','71350000','71354000','71355000','71356000',
-    '71500000','71510000','71520000','71530000','71540000','71541000',
-  ]);
-  const CPV_PLANNING = new Set(['71410000','71411000','71412000']);
-  const CPV_LANDSCAPE = new Set(['77310000','77311000','77312000','77313000','77314000','77315000']);
-  const CPV_CONSTRUCTION = new Set(['45210000','45211000','45211100','45211340','45211341','45212000','45212300','45215000']);
-  const ALL_CPV = new Set([...CPV_DEVELOPER,...CPV_ARCHITECT,...CPV_ENGINEER,...CPV_PLANNING,...CPV_LANDSCAPE,...CPV_CONSTRUCTION]);
-  const PREFIXES = ['701','702','703','704','711','712','713','714','715','7731'];
+  // ── CPV code taxonomy ────────────────────────────────────────────────────
+  // Any notice whose primary CPV or item CPV starts with one of these prefixes
+  // is included. Profession is derived from which prefix matched.
 
+  const CPV_GROUPS = [
+    {
+      profession: 'architect',
+      label: 'Architecture',
+      // 71200000 Architectural and related services — and all sub-codes
+      prefixes: ['71200','71210','71220','71221','71222','71223','71240','71241',
+                 '71242','71243','71244','71245','71250'],
+    },
+    {
+      profession: 'urban',
+      label: 'Urban Planning & Landscape',
+      // 71400000 Urban planning and landscape architectural services
+      prefixes: ['71400','71410','71411','71412','71420','71421'],
+    },
+    {
+      profession: 'landscape',
+      label: 'Landscape',
+      // Landscape services (maintenance / consultancy)
+      prefixes: ['77310','77311','77312','77313','77314','77315'],
+    },
+    {
+      profession: 'developer',
+      label: 'Developer / Land',
+      // 70110000 Development services of real estate — and all real-estate sub-codes
+      prefixes: ['7011','7012','7013','7032','7033'],
+      // Also catch the broader 70000000 group
+      exactCodes: new Set(['70000000','70100000','70110000','70111000','70112000',
+                           '70120000','70121000','70122000','70123000','70130000',
+                           '70200000','70210000','70220000','70300000','70310000',
+                           '70320000','70330000','70331000','70332000','70333000']),
+    },
+    {
+      profession: 'consultant',
+      label: 'Planning Consultancy',
+      // Engineering / technical consultancy related to built environment
+      prefixes: ['71310','71311','71312','71313','71315','71320','71321','71322',
+                 '71324','71327','71328','71330','71340','71350','71354','71355',
+                 '71500','71510','71520','71530','71540','71541'],
+    },
+    {
+      profession: 'masterplan',
+      label: 'Masterplanning',
+      prefixes: ['71251','71260','71270','71300'],
+    },
+  ];
+
+  // Hard exclusions — reject regardless of CPV if title contains these
   const EXCLUSION_TERMS = [
-    'waste chute','linen chute','boiler replacement','boiler service','fire alarm',
-    'fire suppression','sprinkler','lift supply','elevator supply','windows supply',
-    'doors supply','glazing supply','roofing supply','flooring supply','floor covering',
-    'carpet supply','electrical supply','mechanical supply','hvac supply','plumbing supply',
-    'catering equipment','kitchen equipment','laundry equipment','refuse collection',
-    'cleaning contract','pest control','grounds maintenance','grass cutting','weed control',
-    'security guard','cctv','it support','software licence','telecoms','broadband',
-    'printing','stationery','fleet','fuel','audit service','insurance','pension',
-    'recruitment agency','temporary staff','medical supply','pharmaceutical','clinical',
+    'waste chute','linen chute','boiler replacement','boiler service',
+    'fire alarm','fire suppression','sprinkler','lift supply','elevator',
+    'flooring supply','floor covering','carpet supply','curtain wall',
+    'electrical supply','mechanical supply','hvac supply','plumbing supply',
+    'catering equipment','kitchen equipment','laundry equipment',
+    'refuse collection','cleaning contract','pest control',
+    'grass cutting','weed control','security guard','it support',
+    'software licence','telecoms','broadband','insurance','pension',
+    'recruitment agency','temporary staff','medical supply','pharmaceutical',
   ];
 
-  const DEVELOPER_KEYWORDS = [
-    'development partner','development partnership','developer partner',
-    'seeks developer','preferred developer','preferred partner',
-    'development agreement','development agent','master developer',
-    'land disposal','disposal of land','site disposal','disposal of site',
-    'land sale','site for sale','surplus land','surplus site',
-    'development opportunity','regeneration opportunity','site opportunity',
-    'joint venture','joint development','public private partnership',
-    'competitive dialogue','innovation partnership',
-    'preliminary market engagement','early market engagement','market engagement',
-    'request for information','invitation to tender','invitation to negotiate',
-    'expression of interest','pre-qualification','qualification questionnaire',
-    'call for competition','framework agreement',
-    'build to rent','housing development','residential development',
-    'mixed use development','mixed-use development',
-    'brownfield development','regeneration project','town centre regeneration',
-    'estate regeneration','urban regeneration','waterfront regeneration',
-    'affordable housing scheme','social housing',
-    'listed building conversion','building conversion','conversion to residential',
-    'office to residential','heritage conversion','adaptive reuse',
-    'new town','garden community','garden village','garden city',
-    'levelling up','shared prosperity fund',
-    'developer','development corporation',
-  ];
+  // UK notice stage labels
+  const STAGE_LABELS = {
+    planning: 'UK2 Market Engagement',  // Prior Information Notice / preliminary market engagement
+    tender:   'UK1/UK3 Tender',
+    award:    'UK3 Award',
+    active:   'Active',
+  };
 
-  const ARCHITECT_KEYWORDS = [
-    'architect','architectural services','architectural design',
-    'design team','lead designer','design consultancy',
-    'masterplan','masterplanning','master plan','urban design',
-    'placemaking','public realm','landscape design','landscape architect',
-    'heritage consultant','conservation architect','listed building consent',
-    'design','design guide','design review',
-    'planning consultant','planning consultancy','planning services',
-    'feasibility study','feasibility assessment',
-    'interior design','fit-out design',
-  ];
-
-  const ENGINEERING_KEYWORDS = [
-    'structural engineer','civil engineer','transport consultant',
-    'quantity surveyor','project manager','project management',
-    'building surveyor','building consultancy',
-    'infrastructure design','drainage design','flood risk',
-    'sustainability consultant','energy consultant','environmental consultant',
-  ];
-
-  const ALL_KEYWORDS = [...DEVELOPER_KEYWORDS,...ARCHITECT_KEYWORDS,...ENGINEERING_KEYWORDS];
-
-  function isCpvRelevant(id) {
-    if (!id) return false;
-    if (ALL_CPV.has(id)) return true;
-    return PREFIXES.some(p => id.startsWith(p));
-  }
-
-  function cpvType(id) {
-    if (!id) return null;
-    if (CPV_DEVELOPER.has(id)) return 'Developer';
-    if (CPV_ARCHITECT.has(id)) return 'Architect';
-    if (CPV_ENGINEER.has(id)) return 'Engineer';
-    if (CPV_PLANNING.has(id)) return 'Planner';
-    if (CPV_LANDSCAPE.has(id)) return 'Landscape';
-    if (CPV_CONSTRUCTION.has(id)) return 'Construction';
+  // ── CPV matching ──────────────────────────────────────────────────────────
+  function matchCpv(cpvId) {
+    if (!cpvId) return null;
+    for (const group of CPV_GROUPS) {
+      if (group.exactCodes?.has(cpvId)) return group;
+      if (group.prefixes.some(p => cpvId.startsWith(p))) return group;
+    }
     return null;
   }
 
-  function classifyNotice(title, fullText) {
-    const t = title.toLowerCase();
-    const f = fullText.toLowerCase();
-    if (DEVELOPER_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw))) return 'Developer';
-    if (ARCHITECT_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw))) return 'Architect';
-    if (ENGINEERING_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw))) return 'Engineer';
-    return 'Other';
+  function getAllCpvs(release) {
+    const tender = release.tender || {};
+    return [
+      tender.classification?.id,
+      ...(tender.items || []).flatMap(item => [
+        item.classification?.id,
+        ...(item.additionalClassifications || []).map(ac => ac.id),
+      ]),
+    ].filter(Boolean);
   }
 
   function isRelevant(release) {
     const tender = release.tender || {};
     const title = (tender.title || release.description || '').toLowerCase();
-    const fullText = [
-      tender.title, tender.description, release.description,
-      ...(tender.items||[]).map(i => i.description),
-    ].filter(Boolean).join(' ').toLowerCase();
 
+    // Hard exclusions on title
     if (EXCLUSION_TERMS.some(t => title.includes(t))) return false;
 
-    const allCpvs = [
-      tender.classification?.id,
-      ...(tender.items||[]).flatMap(i => [
-        i.classification?.id,
-        ...(i.additionalClassifications||[]).map(ac => ac.id),
-      ]),
-    ].filter(Boolean);
-
-    // Trusted real-estate CPVs: pass without further keyword check
-    if (allCpvs.some(id => CPV_DEVELOPER.has(id))) return true;
-
-    const hasCpv = allCpvs.some(id => isCpvRelevant(id));
-    const hasKeyword = ALL_KEYWORDS.some(kw => title.includes(kw) || fullText.includes(kw));
-
-    return hasCpv || hasKeyword;
+    // Require a matching CPV code for all stages including UK2 planning notices
+    const cpvs = getAllCpvs(release);
+    return cpvs.some(id => matchCpv(id) !== null);
   }
 
   function enrichRelease(release) {
     const tender = release.tender || {};
     const title = tender.title || release.description || '';
-    const fullText = [
-      tender.title, tender.description, release.description,
-      ...(tender.items||[]).map(i => i.description),
-    ].filter(Boolean).join(' ');
-
-    const allCpvs = [
-      tender.classification?.id,
-      ...(tender.items||[]).flatMap(i => [
-        i.classification?.id,
-        ...(i.additionalClassifications||[]).map(ac => ac.id),
-      ]),
-    ].filter(Boolean);
-
-    let noticeType = allCpvs.map(cpvType).find(Boolean) || classifyNotice(title, fullText);
-    const stageMap = { planning:'Early Market Engagement', tender:'Tender', award:'Contract Award', active:'Active' };
     const stage = release.stage || '';
-    const stageLabel = stageMap[stage] || stage || 'Notice';
-    return { ...release, _noticeType: noticeType, _stageLabel: stageLabel };
+    const stageLabel = STAGE_LABELS[stage] || stage || 'Notice';
+
+    // Determine profession from CPV — first match wins
+    const cpvs = getAllCpvs(release);
+    let matchedGroup = null;
+    for (const id of cpvs) {
+      matchedGroup = matchCpv(id);
+      if (matchedGroup) break;
+    }
+
+    // For planning-stage notices without a CPV match, default to developer
+    // (UK2 market engagement notices are most commonly developer-facing)
+    const profession = matchedGroup?.profession || (stage === 'planning' ? 'developer' : 'other');
+    const noticeType = matchedGroup?.label || (stage === 'planning' ? 'Market Engagement' : 'Notice');
+
+    return { ...release, _stageLabel: stageLabel, _noticeType: noticeType, _profession: profession };
   }
 
   try {
     const now    = new Date();
-    const recent = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000);
-    const older  = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    const recent = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000); // last 60 days
+    const older  = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 60–180 days ago
     const mid    = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000);
     const fmt = d => d.toISOString().split('.')[0];
     const base = 'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages';
     const headers = { 'Accept': 'application/json' };
     const sig = () => ({ signal: AbortSignal.timeout(12000) });
 
-    const [r1,r2,r3,r4] = await Promise.all([
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,   { headers,...sig() }),
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,    { headers,...sig() }),
-      fetch(`${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, { headers,...sig() }),
-      fetch(`${base}?stages=planning&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,  { headers,...sig() }),
+    // Four parallel calls: tender + planning (UK2), two time windows each
+    const [r1, r2, r3, r4] = await Promise.all([
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,   { headers, ...sig() }),
+      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,    { headers, ...sig() }),
+      fetch(`${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, { headers, ...sig() }),
+      fetch(`${base}?stages=planning&updatedFrom=${fmt(older)}&updatedTo=${fmt(mid)}&limit=100`,  { headers, ...sig() }),
     ]);
 
     const allReleases = [];
-    for (const resp of [r1,r2,r3,r4]) {
-      if (resp.ok) { const d = await resp.json(); allReleases.push(...(d.releases||[])); }
+    for (const resp of [r1, r2, r3, r4]) {
+      if (resp.ok) { const d = await resp.json(); allReleases.push(...(d.releases || [])); }
     }
 
+    // Deduplicate
     const seen = new Set();
-    const deduped = allReleases.filter(r => { if(seen.has(r.id)) return false; seen.add(r.id); return true; });
+    const deduped = allReleases.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+
     const filtered = deduped.filter(isRelevant).map(enrichRelease);
 
+    // Sort: UK2 market engagement first, then by date descending
     filtered.sort((a, b) => {
-      if (a._stageLabel.includes('Market') && !b._stageLabel.includes('Market')) return -1;
-      if (!a._stageLabel.includes('Market') && b._stageLabel.includes('Market')) return 1;
-      return new Date(b.date||0) - new Date(a.date||0);
+      const aMarket = a.stage === 'planning' ? 0 : 1;
+      const bMarket = b.stage === 'planning' ? 0 : 1;
+      if (aMarket !== bMarket) return aMarket - bMarket;
+      return new Date(b.date || 0) - new Date(a.date || 0);
     });
 
     res.status(200).json({ releases: filtered, _total: deduped.length, _filtered: filtered.length });
