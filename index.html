@@ -1,5 +1,4 @@
-<!DOCTYP
-    <button class="tab-btn tab-members" data-tab="members" onclick="switchTab('members')">Members <span class="tab-count" id="cnt-members"></span></button>E html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -573,6 +572,9 @@
   <button class="tab-btn tab-projects" onclick="switchTab('projects')">
     Live Projects <span class="tab-count" id="cnt-projects">—</span>
   </button>
+  <button class="tab-btn tab-members" data-tab="members" onclick="switchTab('members')">
+    Members <span class="tab-count" id="cnt-members"></span>
+  </button>
 </div>
 
 <div class="filter-bar">
@@ -635,17 +637,17 @@
 <div id="panel-land" class="tab-panel">
   <div class="loading-state"><div class="loading-label">Loading brownfield land register…</div><div class="loading-track"><div class="loading-fill"></div></div></div>
 </div>
-<div id="pan
-  <div id="panel-members" class="tab-panel" style="display:none;padding:2rem;max-width:1200px;margin:0 auto;">
+<div id="panel-members" class="tab-panel" style="display:none;padding:2rem;max-width:1200px;margin:0 auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
       <div><h2 style="font-family:var(--serif);font-weight:300;font-size:1.8rem;margin-bottom:0.25rem;">Member Organisations</h2>
       <p style="font-size:0.9rem;color:var(--ink-mid);">The Developer Intelligence member network.</p></div>
-      <input id="members-search" type="text" placeholder="Search membersâ¦" oninput="renderMembers()" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--surface);font-family:var(--sans);font-size:0.9rem;border-radius:4px;min-width:220px;">
+      <input id="members-search" type="text" placeholder="Search members…" oninput="renderMembers()" style="padding:0.5rem 1rem;border:1px solid var(--border);background:var(--surface);font-family:var(--sans);font-size:0.9rem;border-radius:4px;min-width:220px;">
     </div>
-    <div id="members-loading" style="text-align:center;padding:3rem;color:var(--ink-mid);">Loading membersâ¦</div>
+    <div id="members-loading" style="text-align:center;padding:3rem;color:var(--ink-mid);">Loading members…</div>
     <div id="members-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
-    <p style="margin-top:1.5rem;font-size:0.8rem;color:var(--ink-light);">Live data from a Google Sheet â <a id="members-sheet-link" href="#" target="_blank" style="color:var(--ink-mid);">view spreadsheet</a>.</p>
-  </div>el-projects" class="tab-panel">
+    <p style="margin-top:1.5rem;font-size:0.8rem;color:var(--ink-light);">Live data from a Google Sheet — <a id="members-sheet-link" href="#" target="_blank" style="color:var(--ink-mid);">view spreadsheet</a>.</p>
+  </div>
+<div id="panel-projects" class="tab-panel">
   <div class="lp-toolbar">
     <div class="filter-group">
       <span class="filter-label">Category</span>
