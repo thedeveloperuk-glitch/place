@@ -10,9 +10,9 @@ export default async function handler(req, res) {
 
   // ── CPV CODE SETS ────────────────────────────────────────────────────────────
 
-  // All 70xxxx real-estate codes → Developer / Partner chip
+  // Specific real-estate CPVs only — 70000000 excluded (too generic, used on unrelated notices)
   const CPV_DEVELOPER = new Set([
-    '70000000','70100000','70110000','70111000','70112000',
+    '70100000','70110000','70111000','70112000',
     '70120000','70121000','70122000','70123000','70130000',
     '70200000','70210000','70220000','70300000','70310000',
     '70320000','70330000','70331000','70332000','70333000',
@@ -25,6 +25,9 @@ export default async function handler(req, res) {
     '71240000','71241000','71242000','71243000','71244000','71245000',
     '71246000','71247000','71248000','71250000','71251000',
   ]);
+
+  // Generic root codes used loosely by the API — never trust alone, require keyword confirmation
+  const CPV_GENERIC_ROOTS = new Set(['70000000','71000000']);
 
   // 71400000 urban planning (general) -> Urban Designer chip (data-prof='urban')
   const CPV_URBAN = new Set(['71400000']);
@@ -55,9 +58,9 @@ export default async function handler(req, res) {
     ...CPV_ENGINEER, ...CPV_CONSTRUCTION,
   ]);
 
-  // Broad prefix matching for sub-codes not explicitly listed.
+  // Prefix matching — deliberately NOT including 70xxxx (too many false positives)
+  // Only 71xxxx ranges where we know the sub-codes are relevant
   const CPV_PREFIXES = [
-    '700','701','702','703',                    // 70xxxx real estate
     '7120','7121','7122','7123','7124','7125',  // 712xxxx architectural
     '7130','7131','7132','7133','7134','7135',  // 713xxxx engineering
     '7140','7141','7142',                       // 714xxxx urban/landscape planning
@@ -222,16 +225,24 @@ export default async function handler(req, res) {
       ]),
     ].filter(Boolean);
 
-    // Trusted CPVs: always include without keyword check
-    if (allCpvs.some(id =>
-      CPV_DEVELOPER.has(id) || CPV_ARCHITECT.has(id) ||
-      CPV_URBAN.has(id) || CPV_PLANNING.has(id) || CPV_LANDSCAPE.has(id)
-    )) return true;
-
-    const hasCpv     = allCpvs.some(id => isCpvRelevant(id));
     const hasKeyword = ALL_KEYWORDS.some(kw => title.includes(kw) || fullText.includes(kw));
 
-    return hasCpv || hasKeyword;
+    // Architect/planning/landscape CPVs: always trusted — very specific codes
+    if (allCpvs.some(id =>
+      CPV_ARCHITECT.has(id) || CPV_URBAN.has(id) ||
+      CPV_PLANNING.has(id) || CPV_LANDSCAPE.has(id)
+    )) return true;
+
+    // Developer CPVs: trusted only if NOT also matching a generic root alone
+    // e.g. 70110000 (property letting) is trustworthy; 70000000 alone is not
+    if (allCpvs.some(id => CPV_DEVELOPER.has(id))) return true;
+
+    // Generic roots (70000000, 71000000) only pass with a keyword — prevents false positives
+    if (allCpvs.some(id => CPV_GENERIC_ROOTS.has(id))) return hasKeyword;
+
+    // Engineer/construction CPVs: require keyword to avoid maintenance/repair noise
+    const hasCpv = allCpvs.some(id => isCpvRelevant(id));
+    return (hasCpv || hasKeyword) && hasKeyword;
   }
 
   function enrichRelease(release) {
