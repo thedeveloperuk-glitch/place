@@ -1,3 +1,8 @@
+// Module-level cache — persists across warm Vercel invocations
+let _cache = null;
+let _cacheTime = 0;
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -264,21 +269,27 @@ export default async function handler(req, res) {
     };
   }
 
+  // ── SERVE FROM CACHE if still fresh ─────────────────────────────────────────
+  const forceRefresh = req.query && req.query.refresh === '1';
+  if (_cache && !forceRefresh && (Date.now() - _cacheTime) < CACHE_TTL_MS) {
+    const age = Math.round((Date.now() - _cacheTime) / 1000);
+    if (req.query && req.query.debug === '1') {
+      return res.status(200).json({ ..._cache._debug, _servedFromCache: true, _cacheAgeSeconds: age });
+    }
+    return res.status(200).json({ ..._cache.result, _cached: true, _cacheAgeSeconds: age });
+  }
+
   // ── FETCH ────────────────────────────────────────────────────────────────────
   try {
     const now    = new Date();
-    const recent = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000); // 60 days ago  → upper bound for older window
-    const older  = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 180 days ago → lower bound for older window
-    // BUG FIX: previously `mid` was set to same value as `recent` (both 60 days ago),
-    // making the r2/r4 date window zero-width and returning no results at all.
-    // `recent` is now correctly reused as the upper bound of the older window.
+    const recent = new Date(Date.now() -  60 * 24 * 60 * 60 * 1000);
+    const older  = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
 
     const fmt  = d => d.toISOString().split('.')[0];
     const base = 'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages';
     const headers = { 'Accept': 'application/json' };
-    const delay = ms => new Promise(res => setTimeout(res, ms));
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Sequential fetches with a gap between each to avoid 429 rate limiting
     const urls = [
       `${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,
       `${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,
@@ -290,70 +301,26 @@ export default async function handler(req, res) {
     const fetchStatuses = [];
     for (const url of urls) {
       try {
-        const resp = await fetch(url, { headers, signal: AbortSignal.timeout(12000) });
-        fetchStatuses.push({ url, ok: resp.ok, status: resp.status });
+        const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+        fetchStatuses.push({ ok: resp.ok, status: resp.status });
         if (resp.ok) {
           const d = await resp.json();
           allReleases.push(...(d.releases || []));
+        } else if (resp.status === 429) {
+          // Hit rate limit mid-fetch — stop immediately, return cache if we have it
+          if (_cache) {
+            return res.status(200).json({ ..._cache.result, _cached: true, _rateLimited: true });
+          }
+          return res.status(200).json({ releases: [], error: 'Rate limited by upstream API. Try again in a few minutes.' });
         }
       } catch (e) {
-        fetchStatuses.push({ url, ok: false, error: e.message });
+        fetchStatuses.push({ ok: false, error: e.message });
       }
-      await delay(600); // 600ms between requests
+      await delay(800);
     }
 
     const seen    = new Set();
     const deduped = allReleases.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
-
-    // ── DEBUG MODE: hit /api/tenders?debug=1 to inspect raw API data ──────────
-    if (req.query && req.query.debug === '1') {
-      const sample = deduped.slice(0, 50).map(r => {
-        const tender = r.tender || {};
-        const allCpvs = [
-          tender.classification && tender.classification.id,
-          ...(tender.items || []).flatMap(i => [
-            i.classification && i.classification.id,
-            ...(i.additionalClassifications || []).map(ac => ac.id),
-          ]),
-        ].filter(Boolean);
-        const wouldPass  = isRelevant(r);
-        const enriched   = wouldPass ? enrichRelease(r) : null;
-        const excludedBy = EXCLUSION_TERMS.find(t => (tender.title || '').toLowerCase().includes(t)) || null;
-        return {
-          id:          r.id,
-          title:       tender.title || r.description || '(no title)',
-          stage:       r.stage,
-          cpvs:        allCpvs,
-          wouldPass,
-          excludedBy,
-          profession:  enriched ? enriched.profession : null,
-          noticeType:  enriched ? enriched._noticeType : null,
-        };
-      });
-      const allCpvsInSample = Array.from(new Set(
-        deduped.slice(0, 50).flatMap(r => {
-          const tender = r.tender || {};
-          return [
-            tender.classification && tender.classification.id,
-            ...(tender.items || []).flatMap(i => [
-              i.classification && i.classification.id,
-              ...(i.additionalClassifications || []).map(ac => ac.id),
-            ]),
-          ].filter(Boolean);
-        })
-      )).sort();
-      return res.status(200).json({
-        _debug:          true,
-        _fetchStatuses:  fetchStatuses,
-        _totalFromApi:   allReleases.length,
-        _afterDedup:     deduped.length,
-        _wouldFilter:    deduped.filter(isRelevant).length,
-        _allCpvsInSample: allCpvsInSample,
-        _sample:         sample,
-      });
-    }
-    // ── END DEBUG MODE ────────────────────────────────────────────────────────
-
     const filtered = deduped.filter(isRelevant).map(enrichRelease);
 
     filtered.sort((a, b) => {
@@ -362,9 +329,62 @@ export default async function handler(req, res) {
       return new Date(b.date || 0) - new Date(a.date || 0);
     });
 
-    res.status(200).json({ releases: filtered, _total: deduped.length, _filtered: filtered.length });
+    const result = { releases: filtered, _total: deduped.length, _filtered: filtered.length };
+
+    // ── DEBUG payload (built but only returned if ?debug=1) ───────────────────
+    const debugSample = deduped.slice(0, 50).map(r => {
+      const tender = r.tender || {};
+      const allCpvs = [
+        tender.classification && tender.classification.id,
+        ...(tender.items || []).flatMap(i => [
+          i.classification && i.classification.id,
+          ...(i.additionalClassifications || []).map(ac => ac.id),
+        ]),
+      ].filter(Boolean);
+      const wouldPass  = isRelevant(r);
+      const enriched   = wouldPass ? enrichRelease(r) : null;
+      const excludedBy = EXCLUSION_TERMS.find(t => (tender.title || '').toLowerCase().includes(t)) || null;
+      return {
+        id:         r.id,
+        title:      tender.title || r.description || '(no title)',
+        stage:      r.stage,
+        cpvs:       allCpvs,
+        wouldPass,
+        excludedBy,
+        profession: enriched ? enriched.profession : null,
+        noticeType: enriched ? enriched._noticeType : null,
+      };
+    });
+    const debugPayload = {
+      _debug:           true,
+      _fetchStatuses:   fetchStatuses,
+      _totalFromApi:    allReleases.length,
+      _afterDedup:      deduped.length,
+      _wouldFilter:     filtered.length,
+      _allCpvsInSample: Array.from(new Set(deduped.slice(0,50).flatMap(r => {
+        const tender = r.tender || {};
+        return [tender.classification && tender.classification.id,
+          ...(tender.items||[]).flatMap(i=>[i.classification&&i.classification.id,...(i.additionalClassifications||[]).map(ac=>ac.id)])
+        ].filter(Boolean);
+      }))).sort(),
+      _sample: debugSample,
+    };
+
+    // Store in cache
+    _cache = { result, _debug: debugPayload };
+    _cacheTime = Date.now();
+
+    if (req.query && req.query.debug === '1') {
+      return res.status(200).json(debugPayload);
+    }
+
+    return res.status(200).json(result);
   } catch (e) {
     console.error('Tenders:', e.message);
+    // Return stale cache rather than empty on error
+    if (_cache) {
+      return res.status(200).json({ ..._cache.result, _cached: true, _stale: true });
+    }
     res.status(200).json({ releases: [], error: e.message });
   }
 }
