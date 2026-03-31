@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     'masterplan','masterplanning','master plan','urban design',
     'placemaking','public realm','landscape design','landscape architect',
     'heritage consultant','conservation architect','listed building consent',
-    'design code','design guide','design review',
+    'design','design guide','design review',
     'planning consultant','planning consultancy','planning services',
     'feasibility study','feasibility assessment',
     'interior design','fit-out design',
