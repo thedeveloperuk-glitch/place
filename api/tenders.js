@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     'planning consultant','planning consultancy','planning services',
     'heritage consultant','design code','design guide',
     'build to rent','garden city','new town',
-    'affordable housing','housing development','residential scheme',
+    'affordable housing','housing','residential',
     'brownfield','mixed use','mixed-use','town centre regeneration',
     'development corporation','levelling up fund',
     'feasibility','appointment of','expression of interest',
