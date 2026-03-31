@@ -276,21 +276,30 @@ export default async function handler(req, res) {
     const fmt  = d => d.toISOString().split('.')[0];
     const base = 'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages';
     const headers = { 'Accept': 'application/json' };
-    const sig = () => ({ signal: AbortSignal.timeout(12000) });
+    const delay = ms => new Promise(res => setTimeout(res, ms));
 
-    const [r1, r2, r3, r4] = await Promise.all([
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,   { headers, ...sig() }),
-      fetch(`${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(recent)}&limit=100`, { headers, ...sig() }),
-      fetch(`${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`, { headers, ...sig() }),
-      fetch(`${base}?stages=planning&updatedFrom=${fmt(older)}&updatedTo=${fmt(recent)}&limit=100`,{ headers, ...sig() }),
-    ]);
+    // Sequential fetches with a gap between each to avoid 429 rate limiting
+    const urls = [
+      `${base}?stages=tender&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,
+      `${base}?stages=planning&updatedFrom=${fmt(recent)}&updatedTo=${fmt(now)}&limit=100`,
+      `${base}?stages=tender&updatedFrom=${fmt(older)}&updatedTo=${fmt(recent)}&limit=100`,
+      `${base}?stages=planning&updatedFrom=${fmt(older)}&updatedTo=${fmt(recent)}&limit=100`,
+    ];
 
     const allReleases = [];
-    for (const resp of [r1, r2, r3, r4]) {
-      if (resp.ok) {
-        const d = await resp.json();
-        allReleases.push(...(d.releases || []));
+    const fetchStatuses = [];
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { headers, signal: AbortSignal.timeout(12000) });
+        fetchStatuses.push({ url, ok: resp.ok, status: resp.status });
+        if (resp.ok) {
+          const d = await resp.json();
+          allReleases.push(...(d.releases || []));
+        }
+      } catch (e) {
+        fetchStatuses.push({ url, ok: false, error: e.message });
       }
+      await delay(600); // 600ms between requests
     }
 
     const seen    = new Set();
@@ -335,7 +344,7 @@ export default async function handler(req, res) {
       )).sort();
       return res.status(200).json({
         _debug:          true,
-        _fetchStatuses:  [r1,r2,r3,r4].map((resp, i) => ({ fetch: i+1, ok: resp.ok, status: resp.status })),
+        _fetchStatuses:  fetchStatuses,
         _totalFromApi:   allReleases.length,
         _afterDedup:     deduped.length,
         _wouldFilter:    deduped.filter(isRelevant).length,
