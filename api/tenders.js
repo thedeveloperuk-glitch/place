@@ -80,89 +80,21 @@ export default async function handler(req, res) {
     'recruitment agency','temporary staff','medical supply','pharmaceutical','clinical',
   ];
 
-  // ── KEYWORD LISTS ────────────────────────────────────────────────────────────
-  const DEVELOPER_KEYWORDS = [
-    'development partner','development partnership','developer partner',
-    'seeks developer','preferred developer','preferred partner',
-    'development agreement','development agent','master developer',
-    'land disposal','disposal of land','site disposal','disposal of site',
-    'land sale','site for sale','surplus land','surplus site',
-    'development opportunity','regeneration opportunity','site opportunity',
-    'joint venture','joint development','public private partnership',
-    'competitive dialogue','innovation partnership',
-    'preliminary market engagement','early market engagement','market engagement',
-    'request for information','invitation to tender','invitation to negotiate',
-    'expression of interest','pre-qualification','qualification questionnaire',
-    'call for competition','framework agreement',
-    'build to rent','housing development','residential development',
-    'mixed use development','mixed-use development',
-    'brownfield development','regeneration project','town centre regeneration',
-    'estate regeneration','urban regeneration','waterfront regeneration',
-    'affordable housing scheme','social housing',
-    'listed building conversion','building conversion','conversion to residential',
-    'office to residential','heritage conversion','adaptive reuse',
-    'new town','garden community','garden village','garden city',
-    'levelling up','shared prosperity fund',
-    'developer','development corporation',
-  ];
-
-  const ARCHITECT_KEYWORDS = [
-    'architect','architectural services','architectural design',
-    'design team','lead designer','design consultancy',
-    'masterplan','masterplanning','master plan',
-    'heritage consultant','conservation architect','listed building consent',
-    'design code','design guide','design review',
-    'feasibility study','feasibility assessment',
-    'interior design','fit-out design',
-  ];
-
-  // Urban Designer chip keywords (data-prof='urban')
-  const URBAN_KEYWORDS = [
-    'urban design','urban designer',
-    'placemaking','public realm',
-    'townscape','streetscape',
-    'urban regeneration','urban planning',
-  ];
-
-  // Planning Consultant chip keywords (data-prof='consultant')
-  const PLANNING_KEYWORDS = [
-    'town planning','spatial planning','planning policy',
-    'planning consultant','planning consultancy','planning services',
-    'planning application','development management',
-    'local plan','neighbourhood plan','planning permission',
-    'planning appeal','planning inspector',
-  ];
-
-  // Landscape Architect chip keywords (data-prof='landscape')
-  const LANDSCAPE_KEYWORDS = [
-    'landscape architect','landscape architecture',
-    'landscape design','landscape consultant',
-    'open space design','green infrastructure',
-  ];
-
-  const ENGINEERING_KEYWORDS = [
-    'structural engineer','civil engineer','transport consultant',
-    'quantity surveyor','project manager','project management',
-    'building surveyor','building consultancy',
-    'infrastructure design','drainage design','flood risk',
-    'sustainability consultant','energy consultant','environmental consultant',
-  ];
-
-  const ALL_KEYWORDS = [
-    ...DEVELOPER_KEYWORDS, ...ARCHITECT_KEYWORDS,
-    ...URBAN_KEYWORDS, ...PLANNING_KEYWORDS, ...LANDSCAPE_KEYWORDS,
-    ...ENGINEERING_KEYWORDS,
-  ];
-
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 
-  function isCpvRelevant(id) {
-    if (!id) return false;
-    if (ALL_CPV.has(id)) return true;
-    return CPV_PREFIXES.some(p => id.startsWith(p));
+  // Helper: extract all CPV codes from a release
+  function getCpvs(release) {
+    const tender = release.tender || {};
+    return [
+      tender.classification?.id,
+      ...(tender.items || []).flatMap(i => [
+        i.classification?.id,
+        ...(i.additionalClassifications || []).map(ac => ac.id),
+      ]),
+    ].filter(Boolean);
   }
 
-  // Returns the data-prof value matching index.html chip filter buttons
+  // Maps a CPV to the data-prof chip value used in index.html
   function cpvProfession(id) {
     if (!id) return null;
     if (CPV_DEVELOPER.has(id))    return 'developer';
@@ -172,25 +104,16 @@ export default async function handler(req, res) {
     if (CPV_URBAN.has(id))        return 'urban';       // Urban Designer chip
     if (CPV_ENGINEER.has(id))     return 'consultant';
     if (CPV_CONSTRUCTION.has(id)) return 'developer';
-    // Prefix fallback
-    if (id.startsWith('700')||id.startsWith('701')||id.startsWith('702')||id.startsWith('703')) return 'developer';
+    // Prefix fallback for sub-codes not in explicit sets
     if (id.startsWith('7120')||id.startsWith('7121')||id.startsWith('7122')||
-        id.startsWith('7123')||id.startsWith('7124')||id.startsWith('7125'))                    return 'architect';
-    if (id.startsWith('7141')||id.startsWith('7142')||id.startsWith('7143'))                    return 'consultant'; // planning sub-codes
-    if (id.startsWith('7142'))                                                                   return 'landscape';  // landscape sub-codes
+        id.startsWith('7123')||id.startsWith('7124')||id.startsWith('7125')) return 'architect';
+    if (id.startsWith('7141')||id.startsWith('7143'))                        return 'consultant';
+    if (id.startsWith('7142'))                                                return 'landscape';
+    if (id.startsWith('7130')||id.startsWith('7131')||id.startsWith('7132')||
+        id.startsWith('7133')||id.startsWith('7134')||id.startsWith('7135')||
+        id.startsWith('7150')||id.startsWith('7151')||id.startsWith('7152')||
+        id.startsWith('7153')||id.startsWith('7154'))                        return 'consultant';
     return null;
-  }
-
-  function keywordProfession(title, fullText) {
-    const t = title.toLowerCase();
-    const f = fullText.toLowerCase();
-    if (DEVELOPER_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw)))  return 'developer';
-    if (PLANNING_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw)))   return 'consultant'; // Planning Consultant chip
-    if (LANDSCAPE_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw)))  return 'landscape';  // Landscape Architect chip
-    if (URBAN_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw)))      return 'urban';      // Urban Designer chip
-    if (ARCHITECT_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw)))  return 'architect';
-    if (ENGINEERING_KEYWORDS.some(kw => t.includes(kw) || f.includes(kw))) return 'consultant';
-    return 'other';
   }
 
   function professionLabel(prof) {
@@ -198,9 +121,8 @@ export default async function handler(req, res) {
       developer:  'Developer',
       architect:  'Architect',
       urban:      'Urban Designer',
-      consultant: 'Planning Consultant',
+      consultant: 'Planning / Engineering Consultant',
       landscape:  'Landscape Architect',
-      market:     'Market Engagement',
       other:      'Other',
     };
     return map[prof] || 'Other';
@@ -209,60 +131,41 @@ export default async function handler(req, res) {
   function isRelevant(release) {
     const tender = release.tender || {};
     const title = (tender.title || release.description || '').toLowerCase();
-    const fullText = [
-      tender.title, tender.description, release.description,
-      ...(tender.items || []).map(i => i.description),
-    ].filter(Boolean).join(' ').toLowerCase();
 
-    // Hard exclude on title only (avoids false positives from long descriptions)
+    // Exclude on title
     if (EXCLUSION_TERMS.some(t => title.includes(t))) return false;
 
-    const allCpvs = [
-      tender.classification?.id,
-      ...(tender.items || []).flatMap(i => [
-        i.classification?.id,
-        ...(i.additionalClassifications || []).map(ac => ac.id),
-      ]),
-    ].filter(Boolean);
+    const allCpvs = getCpvs(release);
 
-    const hasKeyword = ALL_KEYWORDS.some(kw => title.includes(kw) || fullText.includes(kw));
-
-    // Architect/planning/landscape CPVs: always trusted — very specific codes
-    if (allCpvs.some(id =>
+    // Architect/planning/landscape CPVs: pass if at least one non-generic CPV is ours.
+    // Guards against these codes appearing incidentally in large multi-CPV frameworks
+    // (e.g. 71421000 in a building-services subcontractor notice alongside 50+ other CPVs).
+    const hasArchCpv = allCpvs.some(id =>
       CPV_ARCHITECT.has(id) || CPV_URBAN.has(id) ||
-      CPV_PLANNING.has(id) || CPV_LANDSCAPE.has(id)
-    )) return true;
+      CPV_PLANNING.has(id)  || CPV_LANDSCAPE.has(id)
+    );
+    if (hasArchCpv) {
+      return allCpvs.some(id =>
+        !CPV_GENERIC_ROOTS.has(id) &&
+        (CPV_ARCHITECT.has(id)||CPV_URBAN.has(id)||CPV_PLANNING.has(id)||CPV_LANDSCAPE.has(id))
+      );
+    }
 
-    // Developer CPVs: trusted only if NOT also matching a generic root alone
-    // e.g. 70110000 (property letting) is trustworthy; 70000000 alone is not
+    // Specific real-estate developer CPVs: always pass
     if (allCpvs.some(id => CPV_DEVELOPER.has(id))) return true;
 
-    // Generic roots (70000000, 71000000) only pass with a keyword — prevents false positives
-    if (allCpvs.some(id => CPV_GENERIC_ROOTS.has(id))) return hasKeyword;
+    // Engineer CPVs: pass only if the primary (first) CPV is engineering —
+    // prevents e.g. a fire-safety works notice with incidental 71317000 slipping through
+    if (allCpvs.length > 0 && CPV_ENGINEER.has(allCpvs[0])) return true;
 
-    // Engineer/construction CPVs: require keyword to avoid maintenance/repair noise
-    const hasCpv = allCpvs.some(id => isCpvRelevant(id));
-    return (hasCpv || hasKeyword) && hasKeyword;
+    return false;
   }
 
   function enrichRelease(release) {
     const tender = release.tender || {};
     const title = tender.title || release.description || '';
-    const fullText = [
-      tender.title, tender.description, release.description,
-      ...(tender.items || []).map(i => i.description),
-    ].filter(Boolean).join(' ');
-
-    const allCpvs = [
-      tender.classification?.id,
-      ...(tender.items || []).flatMap(i => [
-        i.classification?.id,
-        ...(i.additionalClassifications || []).map(ac => ac.id),
-      ]),
-    ].filter(Boolean);
-
-    // CPV takes priority over keyword for profession
-    const profession = allCpvs.map(cpvProfession).find(Boolean) || keywordProfession(title, fullText);
+    const allCpvs = getCpvs(release);
+    const profession = allCpvs.map(cpvProfession).find(Boolean) || 'other';
 
     const stageMap = {
       planning: 'Early Market Engagement',
