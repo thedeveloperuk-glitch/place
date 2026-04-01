@@ -202,7 +202,7 @@ export default async function handler(req, res) {
     const result = { releases: filtered, _total: deduped.length, _filtered: filtered.length };
 
     // ── DEBUG payload (built but only returned if ?debug=1) ───────────────────
-    const debugSample = deduped.slice(0, 50).map(r => {
+    const debugSample = deduped.map(r => {
       const tender = r.tender || {};
       const allCpvs = [
         tender.classification && tender.classification.id,
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
       _totalFromApi:    allReleases.length,
       _afterDedup:      deduped.length,
       _wouldFilter:     filtered.length,
-      _allCpvsInSample: Array.from(new Set(deduped.slice(0,50).flatMap(r => {
+      _allCpvsInSample: Array.from(new Set(deduped.flatMap(r => {
         const tender = r.tender || {};
         return [tender.classification && tender.classification.id,
           ...(tender.items||[]).flatMap(i=>[i.classification&&i.classification.id,...(i.additionalClassifications||[]).map(ac=>ac.id)])
