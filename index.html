@@ -564,7 +564,7 @@
     Developers <span class="tab-count" id="cnt-directory">—</span>
   </button>
   <button class="tab-btn tab-procurement" onclick="switchTab('procurement')">
-    Procurement Notices <span class="tab-count" id="cnt-procurement">—</span>
+    Procurement <span class="tab-count" id="cnt-procurement">—</span>
   </button>
   <button class="tab-btn tab-land" onclick="switchTab('land')">
     Brownfield Land <span class="tab-count" id="cnt-land">—</span>
@@ -592,19 +592,11 @@
     </select>
   </div>
   <div class="filter-group" id="profession-group">
-    <span class="filter-label">Status</span>
-    <button class="chip active" data-active="all"    onclick="setActive('all')">All</button>
-    <button class="chip"        data-active="open"   onclick="setActive('open')">Active only</button>
-    <div style="width:1px;background:var(--cream-darker);margin:0 0.25rem;align-self:stretch;"></div>
-    <span class="filter-label">Seeking</span>
-    <button class="chip active" data-prof="all"         onclick="setProf('all')">All</button>
-    <button class="chip"        data-prof="architect"   onclick="setProf('architect')">Architect</button>
-    <button class="chip"        data-prof="landscape"   onclick="setProf('landscape')">Landscape Architect</button>
-    <button class="chip"        data-prof="masterplan"  onclick="setProf('masterplan')">Masterplanner</button>
-    <button class="chip"        data-prof="urban"       onclick="setProf('urban')">Urban Designer</button>
-    <button class="chip"        data-prof="developer"   onclick="setProf('developer')">Developer / Partner</button>
-    <button class="chip"        data-prof="market"      onclick="setProf('market')">Market Engagement</button>
-    <button class="chip"        data-prof="consultant"  onclick="setProf('consultant')">Planning Consultant</button>
+    <button class="chip active" data-cpvcat="all"       onclick="setCpvCat('all')">All</button>
+    <button class="chip"        data-cpvcat="arch"      onclick="setCpvCat('arch')">Architectural Services</button>
+    <button class="chip"        data-cpvcat="planning"  onclick="setCpvCat('planning')">Planning &amp; Urban Design</button>
+    <button class="chip"        data-cpvcat="engineer"  onclick="setCpvCat('engineer')">Engineering &amp; Surveying</button>
+    <button class="chip"        data-cpvcat="property"  onclick="setCpvCat('property')">Property &amp; Development</button>
   </div>
   <div class="filter-group" id="stage-group" style="display:none;">
     <span class="filter-label">Stage</span>
@@ -707,7 +699,7 @@
 <script>
 // STATE
 let allProcurement=[], allPipeline=[], allLand=[];
-let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all', bfStatusFilter='all';
+let currentTab='procurement', searchTerm='', regionFilter='all', scaleFilter='all', profFilter='all', stageFilter='all', activeFilter='all', bfStatusFilter='all', cpvCatFilter='all';
 let map, markerLayer;
 
 const CITY_COORDS={
@@ -931,20 +923,12 @@ function getItems(){
       if(scaleFilter==='200'&&!(u>=200&&u<500))return false;
       if(scaleFilter==='500'&&u<500)return false;
     }
-    if(currentTab==='procurement'&&activeFilter==='open'){
+    if(currentTab==='procurement'){
+      // Active only: hide notices with a past deadline (no deadline = keep)
       const d=daysUntil(item._deadlineRaw);
       if(d!==null&&d<0)return false;
-    }
-    if(profFilter!=='all'&&currentTab==='procurement'){
-      if(profFilter==='market'){
-        // Market Engagement chip = UK2 preliminary market engagement notices
-        if(!(item._stageLabel||'').includes('Market'))return false;
-      } else if(profFilter==='developer'){
-        // Developer chip = developer profession + market engagement
-        if(item.profession!=='developer'&&!(item._stageLabel||'').includes('Market'))return false;
-      } else {
-        if(item.profession!==profFilter)return false;
-      }
+      // CPV category filter
+      if(cpvCatFilter!=='all'&&item.cpvCategory!==cpvCatFilter)return false;
     }
     if(stageFilter!=='all'&&currentTab==='pipeline'){
       if((item._stage?.cls||'unknown')!==stageFilter)return false;
@@ -984,6 +968,11 @@ function setActive(a){
   document.querySelectorAll('[data-active]').forEach(b=>b.classList.toggle('active',b.dataset.active===a));
   renderCurrentTab();
 }
+function setCpvCat(c){
+  cpvCatFilter=c;
+  document.querySelectorAll('[data-cpvcat]').forEach(b=>b.classList.toggle('active',b.dataset.cpvcat===c));
+  renderCurrentTab();
+}
 function setBfStatus(s){
   bfStatusFilter=s;
   document.querySelectorAll('[data-bfstatus]').forEach(b=>b.classList.toggle('active',b.dataset.bfstatus===s));
@@ -1006,22 +995,37 @@ function renderCurrentTab(){
 // RENDER PROCUREMENT
 function renderProcurement(items){
   const el=document.getElementById('panel-procurement');
-  if(!items.length){el.innerHTML='<div class="empty-state">No procurement notices match your filters.</div>';return;}
+  if(!items.length){el.innerHTML='<div class="empty-state">No procurement notices found.</div>';return;}
+
+  const CAT_LABELS={'arch':'Architectural','planning':'Planning & Urban','engineer':'Engineering','property':'Property & Development','other':'Other'};
+  const CAT_COLOURS={'arch':'#1a4e90','planning':'#1a6038','engineer':'#7a5c10','property':'#6a3090','other':'#666'};
+
+  // Sort: notices with deadline first (nearest first), then no-deadline at end
   const sorted=[...items].sort((a,b)=>{
-    const da=daysUntil(a._deadlineRaw),db=daysUntil(b._deadlineRaw);
-    if(da===null&&db===null)return 0;if(da===null)return 1;if(db===null)return -1;return da-db;
+    const da=daysUntil(a._deadlineRaw), db=daysUntil(b._deadlineRaw);
+    if(da===null&&db===null)return 0;
+    if(da===null)return 1;
+    if(db===null)return -1;
+    return da-db;
   });
+
   el.innerHTML=sorted.map(item=>{
     const days=daysUntil(item._deadlineRaw);
-    return`<div class="proc-card" onclick="showDetail('${escAttr(String(item.id))}')">
-      <div class="proc-stripe"></div>
+    const urgency=days===null?'none':days<=7?'urgent':days<=21?'soon':'ok';
+    const urgencyLabel=days===null?'No deadline':days===0?'Today':days===1?'1 day left':`${days} days`;
+    const cat=item.cpvCategory||'other';
+    const col=CAT_COLOURS[cat];
+    return`<div class="proc-card" onclick="window.open('${escAttr(item.url)}','_blank')">
+      <div class="proc-stripe" style="background:${col}"></div>
       <div class="proc-body">
-        <div class="proc-eyebrow">${item._stageLabel && item._stageLabel !== 'Tender' ? '<span class="regen-pill" style="background:#1a4e9022;border-color:#1a4e90;color:#1a4e90;">'+item._stageLabel+'</span>' : 'Notice'}${item._noticeType && item._noticeType !== 'Other' ? ' <span class="regen-pill" style="background:#e8b84b22;border-color:#e8b84b;color:#8b6000;">'+item._noticeType+'</span>' : ''}${item.isRegen ? ' <span class="regen-pill">Regen</span>' : ''}</div>
+        <div class="proc-eyebrow">
+          <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${col}">${CAT_LABELS[cat]||'Other'}</span>
+          ${item._stageLabel&&item._stageLabel!=='Tender'?`<span class="regen-pill" style="background:#1a4e9022;border-color:#1a4e90;color:#1a4e90;margin-left:0.5rem">${item._stageLabel}</span>`:''}
+        </div>
         <div class="proc-title">${escHtml(item.title)}</div>
         <div class="proc-org">${escHtml(item.org)}${item.location?' · '+escHtml(item.location):''}</div>
         ${item.description?`<div class="proc-desc">${escHtml(item.description)}</div>`:''}
         <div class="proc-tags">
-          ${item.profession&&item.profession!=='other'?`<span class="proc-tag proc-tag-prof">${escHtml(PROF_LABELS[item.profession]||item.profession)}</span>`:''}
           ${item.value?`<span class="proc-tag">${escHtml(item.value)}</span>`:''}
           ${item.region?`<span class="proc-tag">${escHtml(item.region)}</span>`:''}
           ${item.published?`<span class="proc-tag">Published ${escHtml(item.published)}</span>`:''}
@@ -1030,7 +1034,7 @@ function renderProcurement(items){
       <div class="proc-deadline">
         <div class="deadline-label">Deadline</div>
         <div class="deadline-date">${escHtml(item.deadline||'TBC')}</div>
-        ${deadlineBadge(days)}
+        <span class="deadline-cd ${urgency}">${urgencyLabel}</span>
       </div>
     </div>`;
   }).join('');
@@ -1185,9 +1189,22 @@ async function fetchTenders(){
         _noticeType:release._noticeType||null,
       };
       item.region=detectRegion(item);
-      // Use profession set directly by backend (release.profession),
-      // or _profession from older backend format, or fall back to text detection
-      item.profession=release.profession||detectProfession(item)
+
+      // Raw CPV codes — used for plain-English category filter
+      const rawCpvs = [
+        tender.classification?.id,
+        ...(tender.items||[]).flatMap(i=>[
+          i.classification?.id,
+          ...(i.additionalClassifications||[]).map(ac=>ac.id),
+        ]),
+      ].filter(Boolean);
+      item.cpvs = rawCpvs;
+      item.cpvCategory = rawCpvs.some(id=>id.startsWith('712')) ? 'arch'
+        : rawCpvs.some(id=>id.startsWith('714')) ? 'planning'
+        : rawCpvs.some(id=>id.startsWith('713')||id.startsWith('715')) ? 'engineer'
+        : rawCpvs.some(id=>id.startsWith('701')||id.startsWith('702')||id.startsWith('703')) ? 'property'
+        : 'other';
+
       items.push(item);
     }
     return items;
