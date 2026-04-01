@@ -1143,7 +1143,7 @@ function escAttr(s){return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
 // FETCH TENDERS
 async function fetchTenders(){
   try{
-    const res=await fetch('/api/tenders');
+    const res=await fetch('/api/tenders?refresh=1');
     if(!res.ok)throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
     const items=[];
